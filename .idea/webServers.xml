@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="6c0a8fcd-4eeb-43cc-919d-488ffbd31e83" name="ivnix">
+        <fileTransfer rootFolder="/home/ozy/Bichikov" accessType="SFTP" host="51.250.90.245" port="22" sshConfigId="16397158-afd6-4ee4-9170-11fd567ddcae" sshConfig="ozy@51.250.90.245:22 key" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
