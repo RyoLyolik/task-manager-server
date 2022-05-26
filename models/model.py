@@ -37,10 +37,10 @@ users_table = Table(
     'users',
     metadata,
     Column('user_id', Integer, primary_key=True, autoincrement='auto'),
-    Column('name', String(collation='ru-RU-x-icu'), nullable=False),
-    Column('phone_number', String(16)),
+    Column('name', String(collation='ru-RU-x-icu')),
+    Column('phone_number', String(16), unique=True),
     Column('password', String(256), nullable=False),
-    Column('email', String(256), nullable=False, unique=True),
+    Column('email', String(256), unique=True),
     Column('yandex_email', String(256), unique=True),
     Column('telegram_id', Integer, unique=True)
 )
@@ -49,7 +49,7 @@ board_table = Table(
     metadata,
     Column('board_id', Integer, primary_key=True, autoincrement='auto'),
     Column('name', String(length=64, collation='ru-RU-x-icu'), nullable=False),
-    Column('deadline', DateTime),
+    Column('deadline', Date),
     Column('color', String),  # Hex value
     Column('description', String(collation='ru-RU-x-icu'), nullable=True)
 )
@@ -61,10 +61,10 @@ tasks_table = Table(
     Column('name', String(length=64, collation='ru-RU-x-icu'), nullable=False),
     Column('board_id', ForeignKey('board.board_id')),
     Column('description', String(collation='ru-RU-x-icu'), nullable=True),
-    Column('deadline', DateTime, nullable=True),
-    Column('comments', String(collation='ru-RU-x-icu'), nullable=True),
-    Column('completed', Boolean, default=False),
-    Column('attachments', String)
+    Column('deadline', Date, nullable=True),
+    # Column('comments', String(collation='ru-RU-x-icu'), nullable=True),
+    Column('completed', Boolean, default=False)
+    # Column('attachments', String)
 )
 
 delete_table = Table(
@@ -92,4 +92,27 @@ users_deletedtasks = Table(
     Column('user_id', ForeignKey("users.user_id")),
     Column('task_id', ForeignKey("delete.task_id")),
     Column('user_position', String)
+)
+
+users_boards = Table(
+    'users_boards',
+    metadata,
+    Column('user_id', ForeignKey("users.user_id")),
+    Column("board_id", ForeignKey("board.board_id"))
+)
+
+files = Table(
+    "files",
+    metadata,
+    Column('file_id', Integer, primary_key=True,autoincrement='auto'),
+    Column('filename', String(256), nullable=False),
+    Column('task_id', ForeignKey("tasks.task_id"))
+)
+
+comments = Table(
+    "comments",
+    metadata,
+    Column('comment_id', Integer, primary_key=True),
+    Column('task_id', ForeignKey('tasks.task_id')),
+    Column('content', String(5000), nullable=False)
 )
