@@ -185,11 +185,13 @@ def project():
 @jwt_required()
 def add_task():
     req = request.json
-    if not ({"name", "color", "deadline", "description", "users", "author"} - req.keys()):
+    if not ({"name", "board_id", "deadline", "description", "performers", "author", "supervisor"} - req.keys()):
         if req["author"]:
-            board_id = DB.insert_task(req["name"], req["deadline"], req["description"])
-            for user_id in req['users']:
-                DB.insert_users_boards(user_id, board_id)
+            task_id = DB.insert_task(req["name"], req["board_id"], req["description"], req["deadline"])
+            for user_id in req['performers']:
+                DB.insert_users_tasks(task_id, user_id, "performer")
+            DB.insert_users_tasks(task_id, req["author"], "author")
+            DB.insert_users_tasks(task_id, req["supervisor"], "supervisor")
             response = {
                 "status": "ok"
             }
@@ -202,6 +204,7 @@ def add_task():
             "status": "bad request"
         }
     return jsonify(response)
+
 
 @app.route('/profile')
 @jwt_required()

@@ -14,7 +14,7 @@ from io import BytesIO
 
 
 class FileControl:
-    def __init__(self, host_ = 'localhost:9000', access_key_="minioadmin", secret_key_='minioadmin', secure=False):
+    def __init__(self, host_='localhost:9000', access_key_="minioadmin", secret_key_='minioadmin', secure=False):
         self.client = Minio(
             "localhost:9000",
             access_key='minioadmin',
@@ -31,3 +31,5 @@ class FileControl:
         x.release_conn()
         return x.data
 
+    # def create_folder(self, name):
+    #     self.client.fput_object()

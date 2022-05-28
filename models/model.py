@@ -59,7 +59,7 @@ tasks_table = Table(
     metadata,
     Column('task_id', Integer, primary_key=True, autoincrement='auto'),
     Column('name', String(length=64, collation='ru-RU-x-icu'), nullable=False),
-    Column('board_id', ForeignKey('board.board_id')),
+    Column('board_id', ForeignKey('board.board_id'), nullable=False),
     Column('description', String(collation='ru-RU-x-icu'), nullable=True),
     Column('deadline', Date, nullable=True),
     # Column('comments', String(collation='ru-RU-x-icu'), nullable=True),

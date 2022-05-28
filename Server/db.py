@@ -85,7 +85,7 @@ class MainDB:
         return b_id
 
     def insert_users_boards(self, user_id, board_id):
-        if self.get_board(board_id) and self.get_user(ID=user_id):
+        if self.get_user(ID=user_id):
             cursor = self.cursor()
             cursor.execute(
                 """INSERT INTO users_boards (user_id, board_id) VALUES (%s, %s)""",
@@ -116,7 +116,35 @@ class MainDB:
         return board
 
 
-    def insert_task(self,):
+    def insert_task(self, name, board_id, description, deadline):
+        cursor = self.cursor()
+        cursor.execute(
+            """
+            INSERT INTO tasks (name, board_id, description, deadline) VALUES(%s,%s,%s,%s) RETURNING task_id
+            """, (name, board_id, description, deadline,)
+        )
+        t_id = cursor.fetchone()[0]
+        self.conn.commit()
+        cursor.close()
+        return t_id
+
+    def get_task(self, task_id):
+        cursor = self.cursor()
+        cursor.execute(
+            """
+            SELECT * FROM tasks WHERE task_id=%s
+            """, (task_id,)
+        )
+
+    def insert_users_tasks(self, task_id, user_id, position):
+        if self.get_user(ID=user_id):
+            cursor = self.cursor()
+            cursor.execute(
+                """INSERT INTO users_boards (user_id, task_id, user_position) VALUES (%s, %s, %s)""",
+                (user_id, task_id, position)
+            )
+            self.conn.commit()
+            cursor.close()
 
     def __del__(self):
         self.conn.close()
