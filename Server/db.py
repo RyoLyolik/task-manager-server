@@ -115,5 +115,8 @@ class MainDB:
         cursor.close()
         return board
 
+
+    def insert_task(self,):
+
     def __del__(self):
         self.conn.close()

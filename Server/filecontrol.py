@@ -24,3 +24,10 @@ class FileControl:
 
     def upload_file(self, bucket, filename, file):
         pass
+
+    def get_file(self, filename):
+        x = self.client.get_object(bucket_name="files", object_name=filename)
+        x.close()
+        x.release_conn()
+        return x.data
+

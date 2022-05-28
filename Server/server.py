@@ -61,11 +61,12 @@ def refresh_expiring_jwts(response):
         # Case where there is not a valid JWT. Just return the original respone
         return response
 
+
 @app.route('/login', methods=['POST'])
 def login():
     req = request.json
     if "phone" in req:
-        user = DB.get_user(req["phone"])
+        user = DB.get_user(phone=req["phone"])
         if user:
             if user[3] == req["password"]:
                 USER = build_user(user)
@@ -94,11 +95,14 @@ def login():
         }
     print(response)
     return jsonify(response)
+
+
 @app.route('/logout')
 def logout():
-    response = jsonify({"status":"ok"})
+    response = jsonify({"status": "ok"})
     unset_jwt_cookies(response)
     return response
+
 
 @app.route('/registration', methods=["POST"])
 def registration():
@@ -148,12 +152,59 @@ def add_board():
 
 
 @app.route('/project', methods=['POST'])
+@jwt_required()
 def project():
     req = request.json
-    return dict()
+    if "user" in req:
+        user = DB.get_user(ID=req["id"])
+        if user:
+            USER = build_user(user)
+            session['user'] = USER
 
+            access_token = create_access_token(identity=user[0])
+            response = {
+                "status": "ok",
+                "session": session,
+                "access_token": access_token
+            }
+        else:
+            response = {
+                "status": "not ok",
+                "message": "user does not exist"
+            }
+    else:
+        response = {
+            "status": "not ok",
+            "message": "bad request"
+        }
+    print(response)
+    return jsonify(response)
+
+
+@app.route('/add_task', methods=["POST"])
+@jwt_required()
+def add_task():
+    req = request.json
+    if not ({"name", "color", "deadline", "description", "users", "author"} - req.keys()):
+        if req["author"]:
+            board_id = DB.insert_task(req["name"], req["deadline"], req["description"])
+            for user_id in req['users']:
+                DB.insert_users_boards(user_id, board_id)
+            response = {
+                "status": "ok"
+            }
+        else:
+            response = {
+                "status": "unauthorized request"
+            }
+    else:
+        response = {
+            "status": "bad request"
+        }
+    return jsonify(response)
 
 @app.route('/profile')
+@jwt_required()
 def profile():
     """
     Аналогично добываем инфу о челе и возвращаем её форнтам
