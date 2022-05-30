@@ -8,6 +8,7 @@ import json
 from flask_cors import CORS, cross_origin
 from datetime import datetime, timedelta, timezone
 import db
+import _sha256
 
 DB = db.MainDB()
 app = Flask(__name__)
@@ -39,6 +40,11 @@ def build_user(user):
     return USER
 
 
+def hashing_password(password, phone):
+    hash_ = _sha256.sha256((str(password)+str(phone)).encode("utf-8")).hexdigest()
+    return hash_
+
+
 def corsify_actual_response(response):
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
@@ -67,6 +73,7 @@ def login():
     req = request.json
     if "phone" in req:
         user = DB.get_user(phone=req["phone"])
+        req["password"] = hashing_password(req["password"], req["phone"])
         if user:
             if user[3] == req["password"]:
                 USER = build_user(user)

@@ -2,7 +2,11 @@
 
 import psycopg2
 from psycopg2.errors import *
+import _sha256
 
+def hashing_password(password, phone):
+    hash_ = _sha256.sha256((str(password)+str(phone)).encode("utf-8")).hexdigest()
+    return hash_
 
 class MainDB:
     def __init__(self, dbname_='Ivnix', user_='postgres', password_='user', host_="localhost"):
@@ -38,12 +42,13 @@ class MainDB:
         cursor = self.cursor()
         answer = "ok"
         CHECK = self.get_user(phone)
+        password_hash = hashing_password(password,phone)
         if not CHECK:
             cursor.execute(
                 """
                 INSERT INTO USERS (phone_number, password) VALUES (%s, %s) 
                 """,
-                (phone, password,)
+                (phone, password_hash,)
             )
             self.conn.commit()
         else:
