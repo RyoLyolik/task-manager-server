@@ -8,7 +8,7 @@ import json
 from flask_cors import CORS, cross_origin
 from datetime import datetime, timedelta, timezone
 import db
-import _sha256
+import _sha3
 
 DB = db.MainDB()
 app = Flask(__name__)
@@ -41,7 +41,7 @@ def build_user(user):
 
 
 def hashing_password(password, phone):
-    hash_ = _sha256.sha256((str(password)+str(phone)).encode("utf-8")).hexdigest()
+    hash_ = _sha3.sha3_256((str(password)+str(phone)).encode("utf-8")).hexdigest()
     return hash_
 
 
