@@ -1,61 +1,36 @@
 # Тут будут функции по работе с бд
 
 import psycopg2
-from psycopg2.errors import *
-import _sha3
+from psycopg2.errors import *  # TODO: на будущее, чтобы разобраться с ошибками в бд( нужно как-то отменять запись)
+from ADDITIONAL import hashing_password
+from config import DataBaseConfig
 
-def hashing_password(password, phone):
-    hash_ = _sha3.sha3_256((str(password)+str(phone)).encode("utf-8")).hexdigest()
-    return hash_
 
 class MainDB:
-    def __init__(self, dbname_='Ivnix', user_='postgres', password_='user', host_="localhost"):
+    def __init__(self):
         self.conn = psycopg2.connect(
-            dbname=dbname_, user=user_,
-            password=password_,
-            host=host_
-        )
+            dbname=DataBaseConfig.dbname,
+            user=DataBaseConfig.user,
+            password=DataBaseConfig.password,
+            host=DataBaseConfig.host
+        )  # connect to DB
 
     def cursor(self):
         return self.conn.cursor()
 
-    def get_columns(self, tablename):
-        cursor = self.cursor()
-        cursor.execute(
-            "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{}'".format(tablename)
-        )
-        columns = cursor.fetchall()
-        return columns
-
-    def insert(self, tablename, **kwargs):
-        cursor = self.cursor()
-        query = "INSERT INTO {} ({}) VALUES ({})"
-        keys = ", ".join([str(key) for key in kwargs.keys()])
-        values = ", ".join(["'" + str(value) + "'" for value in kwargs.values()])
-        query = query.format(tablename, keys, values)
-        cursor.execute(query=query)
-        self.conn.commit()
-        cursor.close()
-        return 1
-
     def insert_user(self, phone, password):
         cursor = self.cursor()
-        answer = "ok"
-        CHECK = self.get_user(phone)
-        password_hash = hashing_password(password,phone)
-        if not CHECK:
-            cursor.execute(
-                """
-                INSERT INTO USERS (phone_number, password) VALUES (%s, %s) 
-                """,
-                (phone, password_hash,)
-            )
-            self.conn.commit()
-        else:
-            answer = "User already exists"
-            self.cursor().close()
-            return answer
-        return answer
+        password_hash = hashing_password(password, phone)  # getting hash of password
+        cursor.execute(
+            """
+            INSERT INTO USERS (phone_number, password) VALUES (%s, %s) RETURNING user_id
+            """,
+            (phone, password_hash,)
+        )
+        u_id = cursor.fetchone()[0]
+        self.conn.commit()
+        self.cursor().close()
+        return u_id
 
     def get_user(self, phone=None, ID=None):
         cursor = self.cursor()
@@ -66,7 +41,7 @@ class MainDB:
                 """,
                 (phone,)
             )
-        if ID:
+        elif ID:
             cursor.execute(
                 """
                 SELECT * FROM users WHERE user_id=%s
@@ -99,7 +74,6 @@ class MainDB:
             self.conn.commit()
             cursor.close()
 
-
     def get_boards_by_user(self, user_id):
         cursor = self.cursor()
         cursor.execute(
@@ -119,7 +93,6 @@ class MainDB:
         board = cursor.fetchone()
         cursor.close()
         return board
-
 
     def insert_task(self, name, board_id, description, deadline):
         cursor = self.cursor()
@@ -150,6 +123,26 @@ class MainDB:
             )
             self.conn.commit()
             cursor.close()
+
+    def custom_query(self, fnc):
+        cursor = self.cursor()
+        X = fnc(cursor)
+        return X
+
+    ################# EXAMPLE FOR REUSABLE FUNCTION ######################
+    # def run_custom_query():
+    #     @DB.custom_query
+    #     def foo(cursor):
+    #         cursor.execute(
+    #             """SELECT * from USERS WHERE user_id = 13"""
+    #         )
+    #         x = cursor.fetchone()
+    #         return x
+    #
+    #     return foo
+    #
+    # print(run_custom_query()) -> [user_id, user_name, ... ]
+    ######################################################################
 
     def __del__(self):
         self.conn.close()

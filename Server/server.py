@@ -1,14 +1,14 @@
 # Тут обработка запросов сервером
 
 from flask import *
-# from flask_session import Session
 from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, \
     unset_jwt_cookies, jwt_required, JWTManager
 import json
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 from datetime import datetime, timedelta, timezone
 import db
-import _sha3
+from ADDITIONAL import hashing_password
+from statuses import StatusBuilder
 
 DB = db.MainDB()
 app = Flask(__name__)
@@ -40,16 +40,6 @@ def build_user(user):
     return USER
 
 
-def hashing_password(password, phone):
-    hash_ = _sha3.sha3_256((str(password)+str(phone)).encode("utf-8")).hexdigest()
-    return hash_
-
-
-def corsify_actual_response(response):
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    return response
-
-
 @app.after_request
 def refresh_expiring_jwts(response):
     try:
@@ -70,37 +60,19 @@ def refresh_expiring_jwts(response):
 
 @app.route('/login', methods=['POST'])
 def login():
-    req = request.json
-    if "phone" in req:
-        user = DB.get_user(phone=req["phone"])
-        req["password"] = hashing_password(req["password"], req["phone"])
-        if user:
-            if user[3] == req["password"]:
-                USER = build_user(user)
-                session['user'] = USER
-
-                access_token = create_access_token(identity=user[0])
-                response = {
-                    "status": "ok",
-                    "session": session,
-                    "access_token": access_token
-                }
-            else:
-                response = {
-                    "status": "not ok",
-                    "message": "wrong password"
-                }
-        else:
-            response = {
-                "status": "not ok",
-                "message": "user does not exist"
-            }
-    else:
+    status = StatusBuilder.login(request.json)
+    response = dict()
+    if status == StatusBuilder.OK:
+        user = build_user(DB.get_user(phone=request.json["phone"]))
+        session["user"] = user
+        access_token = create_access_token(identity=user["id"])
         response = {
-            "status": "not ok",
-            "message": "bad request"
+            "status": status,
+            "session": session,
+            "access_token": access_token
         }
-    print(response)
+    else:
+        response["status"] = status
     return jsonify(response)
 
 
@@ -113,25 +85,24 @@ def logout():
 
 @app.route('/registration', methods=["POST"])
 def registration():
-    req = request.json
-    print(req)
-    if not ({"password", "password_confirm", "phone"} - req.keys()):
-        response = {"status": "ok"},
-        if req['password'] == req['password_confirm']:
-            q = DB.insert_user(req['phone'], req['password'])
-            if q == "ok":
-                USER = build_user(DB.get_user(req["phone"]))
-                session["user"] = USER
-                response = {
-                    "status": q,
-                    "session": session
-                }
-            else:
-                response = {
-                    "status": q
-                }
+    status = StatusBuilder.registration(request.json)
+    response = dict()
+    if status == StatusBuilder.OK:
+        user = DB.get_user(phone="phone")
+        if not user:
+            user = build_user(
+                DB.get_user(ID=DB.insert_user(phone=request.json['phone'], password=request.json['password'])))
+            session["user"] = user
+            access_token = create_access_token(identity=user["id"])
+            response = {
+                "status": status,
+                "session": session,
+                "access_token": access_token
+            }
+        else:
+            response["status"] = "User already exists"
     else:
-        response = {"status": "bad request"}
+        response["status"] = status
     return jsonify(response)
 
 
@@ -139,22 +110,16 @@ def registration():
 @jwt_required()
 def add_board():
     req = request.json
-    if not ({"name", "color", "deadline", "description", "users", "author"} - req.keys()):
-        if req["author"]:
-            board_id = DB.insert_board(req["name"], req["color"], req["deadline"], req["description"])
-            for user_id in req['users']:
-                DB.insert_users_boards(user_id, board_id)
-            response = {
-                "status": "ok"
-            }
-        else:
-            response = {
-                "status": "unauthorized request"
-            }
+    status = StatusBuilder.add_board(req)
+    response = dict()
+    if status == StatusBuilder.OK:
+        board_id = DB.insert_board(req["name"], req["color"], req["deadline"], req["description"])
+        for user_id in req['users']:
+            DB.insert_users_boards(user_id, board_id)
+        response["status"] = "ok"
     else:
-        response = {
-            "status": "bad request"
-        }
+        response["status"] = status
+
     return jsonify(response)
 
 
@@ -162,29 +127,22 @@ def add_board():
 @jwt_required()
 def project():
     req = request.json
-    if "user" in req:
-        user = DB.get_user(ID=req["id"])
+    status = StatusBuilder.project(req)
+    response = dict()
+    if status:
+        user = DB.get_user(ID=req["user"]["id"])
         if user:
             USER = build_user(user)
             session['user'] = USER
 
-            access_token = create_access_token(identity=user[0])
             response = {
                 "status": "ok",
-                "session": session,
-                "access_token": access_token
+                "session": session
             }
         else:
-            response = {
-                "status": "not ok",
-                "message": "user does not exist"
-            }
+            response["status"] = "User does not exist"
     else:
-        response = {
-            "status": "not ok",
-            "message": "bad request"
-        }
-    print(response)
+        response["status"] = status
     return jsonify(response)
 
 
@@ -192,24 +150,17 @@ def project():
 @jwt_required()
 def add_task():
     req = request.json
-    if not ({"name", "board_id", "deadline", "description", "performers", "author", "supervisor"} - req.keys()):
-        if req["author"]:
-            task_id = DB.insert_task(req["name"], req["board_id"], req["description"], req["deadline"])
-            for user_id in req['performers']:
-                DB.insert_users_tasks(task_id, user_id, "performer")
-            DB.insert_users_tasks(task_id, req["author"], "author")
-            DB.insert_users_tasks(task_id, req["supervisor"], "supervisor")
-            response = {
-                "status": "ok"
-            }
-        else:
-            response = {
-                "status": "unauthorized request"
-            }
+    response = dict()
+    status = StatusBuilder.add_task(req)
+    if status == StatusBuilder.OK:
+        task_id = DB.insert_task(req["name"], req["board_id"], req["description"], req["deadline"])
+        for user_id in req['performers']:
+            DB.insert_users_tasks(task_id, user_id, "performer")
+        DB.insert_users_tasks(task_id, req["author"], "author")
+        DB.insert_users_tasks(task_id, req["supervisor"], "supervisor")
+        response["status"] = "ok"
     else:
-        response = {
-            "status": "bad request"
-        }
+        response["status"] = status
     return jsonify(response)
 
 
@@ -223,7 +174,6 @@ def profile():
 
 
 if __name__ == '__main__':
-    app.config["JWT_SECRET_KEY"] = "please-remember-to-change-me"
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
+    app.config.from_object('config.FlaskConfig')
     JWT = JWTManager(app)
     app.run(port=8010, host='127.0.0.1', debug=True)

@@ -2,6 +2,8 @@ from minio import Minio
 from minio.error import InvalidResponseError
 import os
 from io import BytesIO
+from config import MinioConfig
+
 
 # Put a file with default content-type, upon success prints the etag identifier computed by server.
 # try:
@@ -14,12 +16,12 @@ from io import BytesIO
 
 
 class FileControl:
-    def __init__(self, host_='localhost:9000', access_key_="minioadmin", secret_key_='minioadmin', secure=False):
+    def __init__(self):
         self.client = Minio(
-            "localhost:9000",
-            access_key='minioadmin',
-            secret_key='minioadmin',
-            secure = False # Почему-то только так работает
+            MinioConfig.host,
+            access_key=MinioConfig.access_key,
+            secret_key=MinioConfig.secret_key,
+            secure=MinioConfig.secure
         )
 
     def upload_file(self, bucket, filename, file):
@@ -30,6 +32,3 @@ class FileControl:
         x.close()
         x.release_conn()
         return x.data
-
-    # def create_folder(self, name):
-    #     self.client.fput_object()
