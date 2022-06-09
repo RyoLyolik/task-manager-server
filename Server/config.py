@@ -8,9 +8,9 @@ class FlaskConfig:
 
 
 class DataBaseConfig:
-    dbname = 'Ivnix'
-    user = 'postgres'
-    password = 'user'
+    dbname = "Ivnix"
+    user = "postgres"
+    password = "user"
     host = "localhost"
 
 

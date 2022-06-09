@@ -37,7 +37,7 @@ users_table = Table(
     'users',
     metadata,
     Column('user_id', Integer, primary_key=True, autoincrement='auto'),
-    Column('name', String(collation='ru-RU-x-icu')),
+    Column('name', String(collation='ru-RU-x-icu'), unique=True),
     Column('phone_number', String(16), unique=True),
     Column('password', String(256), nullable=False),
     Column('email', String(256), unique=True),
