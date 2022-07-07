@@ -34,14 +34,14 @@ class MainDB:
 
     def get_user(self, phone=None, ID=None):
         cursor = self.cursor()
-        if phone:
+        if phone is not None:
             cursor.execute(
                 """
                 SELECT * FROM users WHERE phone_number=%s
                 """,
                 (phone,)
             )
-        elif ID:
+        elif ID is not None:
             cursor.execute(
                 """
                 SELECT * FROM users WHERE user_id=%s

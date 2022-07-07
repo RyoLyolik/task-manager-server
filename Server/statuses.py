@@ -56,3 +56,11 @@ class StatusBuilder:
                 return cls.OK
             return cls.UR
         return cls.BR
+
+    @classmethod
+    def get_profile(cls, req):
+        if "user" in req and isinstance(req["user"], dict):
+            if "id" in req["user"] and isinstance(req["user"]["id"], int):
+                return cls.OK
+            return cls.BR
+        return cls.UR

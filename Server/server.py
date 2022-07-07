@@ -63,14 +63,21 @@ def login():
     status = StatusBuilder.login(request.json)
     response = dict()
     if status == StatusBuilder.OK:
-        user = build_user(DB.get_user(phone=request.json["phone"]))
-        session["user"] = user
-        access_token = create_access_token(identity=user["id"])
-        response = {
-            "status": status,
-            "session": session,
-            "access_token": access_token
-        }
+        user = DB.get_user(phone=request.json["phone"])
+        if user is not None:
+            if user[3] == hashing_password(request.json["password"], request.json["phone"]):
+                user = build_user(user)
+                session["user"] = user
+                access_token = create_access_token(identity=user["id"])
+                response = {
+                    "status": status,
+                    "session": session,
+                    "access_token": access_token
+                }
+            else:
+                response["status"] = "Wrong password"
+        else:
+            response["status"] = "User does not exist"
     else:
         response["status"] = status
     return jsonify(response)
@@ -88,8 +95,8 @@ def registration():
     status = StatusBuilder.registration(request.json)
     response = dict()
     if status == StatusBuilder.OK:
-        user = DB.get_user(phone="phone")
-        if not user:
+        user = DB.get_user(phone=request.json['phone'])
+        if user is None:
             user = build_user(
                 DB.get_user(ID=DB.insert_user(phone=request.json['phone'], password=request.json['password'])))
             session["user"] = user
@@ -106,12 +113,14 @@ def registration():
     return jsonify(response)
 
 
-@app.route('/add_board', methods=['GET', 'POST'])
+@app.route('/add_board', methods=['POST'])
 @jwt_required()
 def add_board():
     req = request.json
+    print(req)
     status = StatusBuilder.add_board(req)
     response = dict()
+    response["status"] = status
     if status == StatusBuilder.OK:
         board_id = DB.insert_board(req["name"], req["color"], req["deadline"], req["description"])
         for user_id in req['users']:
@@ -170,7 +179,16 @@ def profile():
     """
     Аналогично добываем инфу о челе и возвращаем её форнтам
     """
-    return dict()
+    req = request.json
+    response = dict()
+    status = StatusBuilder.get_profile(req)
+    response["status"] = status
+    if StatusBuilder == StatusBuilder.OK:
+        user = DB.get_user(ID=req["id"])
+        USER = build_user(user)
+        response["user"] = USER
+        response["session"] = session
+    return jsonify(response)
 
 
 if __name__ == '__main__':
