@@ -1,5 +1,5 @@
 from datetime import timedelta
-
+import re
 
 class FlaskConfig:
     secret_key = "KEY"
@@ -12,7 +12,7 @@ class JWTConfig:
 class CORSConfig:
     resources = {
         r"/*":{ # куда будут приходить запросы (в данном случае на любой адрес сервера)
-            "origins": "http://localhost:3000/*" # откуда будут приходить запросы
+            "origins": r"https://localhost:3000/*" # откуда будут приходить запросы
         }
     }
 

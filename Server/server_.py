@@ -8,8 +8,6 @@ from flask_cors import CORS
 from datetime import datetime, timedelta, timezone
 import db
 from ADDITIONAL import hashing_password
-from statuses import StatusBuilder
-
 DB = db.MainDB()
 app = Flask(__name__)
 app.secret_key = 'KEY'
@@ -65,9 +63,9 @@ def refresh_expiring_jwts(response):
 
 @app.route('/login', methods=['POST'])
 def login():
-    status = StatusBuilder.login(request.json)
     response = dict()
-    if status == StatusBuilder.OK:
+    status = "OK"
+    if status:
         user = DB.get_user(phone=request.json["phone"])
         if user is not None:
             if user[3] == hashing_password(request.json["password"], request.json["phone"]):
@@ -93,110 +91,110 @@ def logout():
     response = jsonify({"status": "ok"})
     unset_jwt_cookies(response)
     return response
-
-
-@app.route('/registration', methods=["POST"])
-def registration():
-    status = StatusBuilder.registration(request.json)
-    response = dict()
-    if status == StatusBuilder.OK:
-        user = DB.get_user(phone=request.json['phone'])
-        if user is None:
-            user = build_user(
-                DB.get_user(ID=DB.insert_user(phone=request.json['phone'], password=request.json['password'])))
-            session["user"] = user
-            access_token = create_access_token(identity=user["id"])
-            response = {
-                "status": status,
-                "session": session,
-                "access_token": access_token
-            }
-        else:
-            response["status"] = "User already exists"
-    else:
-        response["status"] = status
-    return jsonify(response)
-
-
-@app.route('/add_board', methods=['POST'])
-@jwt_required()
-def add_board():
-    req = request.json
-    status = StatusBuilder.add_board(req)
-    response = dict()
-    response["status"] = status
-    if status == StatusBuilder.OK:
-        board_id = DB.insert_board(req["name"], req["color"], req["deadline"], req["description"])
-        for user_id in req['users']:
-            DB.insert_users_boards(user_id, board_id)
-        DB.insert_users_boards(req["author"], board_id)
-        response["status"] = "ok"
-    else:
-        response["status"] = status
-
-    return jsonify(response)
-
-
-@app.route('/projects', methods=['POST'])
-@jwt_required()
-def projects():
-    req = request.json
-    status = StatusBuilder.projects(req)
-    response = dict()
-    if status:
-        user = DB.get_user(ID=req["user"]["id"])
-        if user:
-            USER = build_user(user)
-            session['user'] = USER
-
-            response = {
-                "status": "ok",
-                "session": session
-            }
-        else:
-            response["status"] = "User does not exist"
-    else:
-        response["status"] = status
-    return jsonify(response)
-
-
-@app.route('/add_task', methods=["POST"])
-@jwt_required()
-def add_task():
-    req = request.json
-    response = dict()
-    status = StatusBuilder.add_task(req)
-    if status == StatusBuilder.OK:
-        task_id = DB.insert_task(req["name"], req["board_id"], req["description"], req["deadline"])
-        for user_id in req['performers']:
-            DB.insert_users_tasks(task_id, user_id, "performer")
-        DB.insert_users_tasks(task_id, req["author"], "author")
-        DB.insert_users_tasks(task_id, req["supervisor"], "supervisor")
-        response["status"] = "ok"
-    else:
-        response["status"] = status
-    return jsonify(response)
-
-
-@app.route('/profile')
-@jwt_required()
-def profile():
-    print(user_identity_lookup())
-    req = request.json
-    response = dict()
-    status = StatusBuilder.get_profile(req)
-    response["status"] = status
-    if StatusBuilder == StatusBuilder.OK:
-        user = DB.get_user(ID=req["id"])
-        USER = build_user(user)
-        response["user"] = USER
-        response["session"] = session
-    return jsonify(response)
-
-@app.route('/task_add_file', methods=["POST"])
-@jwt_required()
-def project():
-    pass
+#
+#
+# @app.route('/registration', methods=["POST"])
+# def registration():
+#     status = StatusBuilder.registration(request.json)
+#     response = dict()
+#     if status == StatusBuilder.OK:
+#         user = DB.get_user(phone=request.json['phone'])
+#         if user is None:
+#             user = build_user(
+#                 DB.get_user(ID=DB.insert_user(phone=request.json['phone'], password=request.json['password'])))
+#             session["user"] = user
+#             access_token = create_access_token(identity=user["id"])
+#             response = {
+#                 "status": status,
+#                 "session": session,
+#                 "access_token": access_token
+#             }
+#         else:
+#             response["status"] = "User already exists"
+#     else:
+#         response["status"] = status
+#     return jsonify(response)
+#
+#
+# @app.route('/add_board', methods=['POST'])
+# @jwt_required()
+# def add_board():
+#     req = request.json
+#     status = StatusBuilder.add_board(req)
+#     response = dict()
+#     response["status"] = status
+#     if status == StatusBuilder.OK:
+#         board_id = DB.insert_board(req["name"], req["color"], req["deadline"], req["description"])
+#         for user_id in req['users']:
+#             DB.insert_users_boards(user_id, board_id)
+#         DB.insert_users_boards(req["author"], board_id)
+#         response["status"] = "ok"
+#     else:
+#         response["status"] = status
+#
+#     return jsonify(response)
+#
+#
+# @app.route('/projects', methods=['POST'])
+# @jwt_required()
+# def projects():
+#     req = request.json
+#     status = StatusBuilder.projects(req)
+#     response = dict()
+#     if status:
+#         user = DB.get_user(ID=req["user"]["id"])
+#         if user:
+#             USER = build_user(user)
+#             session['user'] = USER
+#
+#             response = {
+#                 "status": "ok",
+#                 "session": session
+#             }
+#         else:
+#             response["status"] = "User does not exist"
+#     else:
+#         response["status"] = status
+#     return jsonify(response)
+#
+#
+# @app.route('/add_task', methods=["POST"])
+# @jwt_required()
+# def add_task():
+#     req = request.json
+#     response = dict()
+#     status = StatusBuilder.add_task(req)
+#     if status == StatusBuilder.OK:
+#         task_id = DB.insert_task(req["name"], req["board_id"], req["description"], req["deadline"])
+#         for user_id in req['performers']:
+#             DB.insert_users_tasks(task_id, user_id, "performer")
+#         DB.insert_users_tasks(task_id, req["author"], "author")
+#         DB.insert_users_tasks(task_id, req["supervisor"], "supervisor")
+#         response["status"] = "ok"
+#     else:
+#         response["status"] = status
+#     return jsonify(response)
+#
+#
+# @app.route('/profile')
+# @jwt_required()
+# def profile():
+#     print(user_identity_lookup())
+#     req = request.json
+#     response = dict()
+#     status = StatusBuilder.get_profile(req)
+#     response["status"] = status
+#     if StatusBuilder == StatusBuilder.OK:
+#         user = DB.get_user(ID=req["id"])
+#         USER = build_user(user)
+#         response["user"] = USER
+#         response["session"] = session
+#     return jsonify(response)
+#
+# @app.route('/task_add_file', methods=["POST"])
+# @jwt_required()
+# def project():
+#     pass
 
 # @app.route('/task_add_comment')
 

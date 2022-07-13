@@ -63,12 +63,12 @@ class MainDB:
         cursor.close()
         return b_id
 
-    def insert_users_boards(self, user_id, board_id):
+    def insert_users_boards(self, user_id, board_id, user_position=None):
         if self.get_user(ID=user_id):
             cursor = self.cursor()
             cursor.execute(
-                """INSERT INTO users_boards (user_id, board_id) VALUES (%s, %s)""",
-                (user_id, board_id)
+                """INSERT INTO users_boards (user_id, board_id, user_position) VALUES (%s, %s, %s)""",
+                (user_id, board_id, user_position,)
             )
             self.conn.commit()
             cursor.close()
@@ -140,6 +140,29 @@ class MainDB:
         X = fnc(cursor)
         return X
 
+    def get_tasks_by_board(self, board_id):
+        if self.get_board(board_id):
+            cursor = self.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM tasks WHERE board_id = %s
+                """,
+                (board_id,)
+            )
+            tasks = cursor.fetchall()
+            return tasks
+
+    def get_users_tasks(self, task_id=None, user_id=None):
+        cursor = self.cursor()
+        if task_id:
+            cursor.execute(
+                """
+                SELECT * FROM users_tasks WHERE task_id=%s
+                """,
+                (task_id,)
+            )
+            task_info = cursor.fetchall()
+            return task_info
     ################# EXAMPLE FOR REUSABLE FUNCTION ######################
     # def run_custom_query():
     #     @DB.custom_query

@@ -105,6 +105,7 @@ def profile_info():
     }
     return jsonify(response)
 
+
 @app.route('/profile/boards', methods=["GET"])
 @jwt_required()
 def profile_boards():
@@ -124,6 +125,7 @@ def profile_boards():
     }
     return jsonify(response)
 
+
 @app.route('/board/info', methods=["GET"])
 @jwt_required()
 def board_info():
@@ -142,6 +144,24 @@ def board_info():
                     "description": board[4]
                 }
 
+                board_tasks = DB.get_tasks_by_board(req["board_id"])
+                tasks = dict()
+                print(board_tasks)
+                if board_tasks:
+                    for task in board_tasks:
+                        task_users = DB.get_users_tasks(task_id=task[0])
+                        task_users.sort(key=lambda x: x[2])
+
+                        tasks[task[0]] = {
+                            "name": task[1],
+                            "deadline": task[4],
+                            "description": task[3],
+                            "author": task_users[0][0],
+                            "performer": task_users[1][0],
+                            "supervisor": task_users[2][0]
+                        }
+                BOARD["board"]["tasks"] = tasks
+
                 response["board"] = BOARD
             else:
                 response["status"] = "Board does not contain this user"
@@ -150,6 +170,61 @@ def board_info():
     else:
         response["status"] = "Bad request"
 
+    return jsonify(response)
+
+
+@app.route('/task/info', methods=["GET"])
+@jwt_required()
+def task_info():
+    ID = get_jwt_identity()
+    req = request.json
+    response = dict()
+    if "task_id" in req:
+        task = DB.get_task(req["task_id"])
+        task_users = DB.get_users_tasks(task_id=req["task_id"])
+        TASK = {
+            "id": task[0],
+            "name": task[1],
+            "deadline": task[4],
+            "description": task[3],
+            "author": task_users[0][0],
+            "performer": task_users[1][0],
+            "supervisor": task_users[2][0]
+        }
+        response["task"] = TASK
+    else:
+        response["status"] = "Bad request"
+    return jsonify(response)
+
+@app.route('/add/board', methods=["POST"])
+@jwt_required()
+def add_board():
+    ID = get_jwt_identity()
+    req = request.json
+    response = dict()
+    if not ({"name", "deadline", "color", "description"} - req.keys()):
+        board_id = DB.insert_board(req["name"], req["color"], req["deadline"], req["description"])
+        DB.insert_users_boards(ID, board_id, user_position="admin")
+    else:
+        response["status"] = "Bad request"
+    return jsonify(response)
+
+@app.route('/add/task')
+@jwt_required()
+def add_task():
+    ID = get_jwt_identity()
+    req = request.json
+    response = dict()
+
+    if not ({"name", "board_id", "description", "deadline"} - req.keys()):
+        board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=req["board_id"])
+        if board_user is not None:
+            task_id = DB.insert_task(name=req["name"], board_id=req["board_id"], description=req["description"], deadline=req["deadline"])
+            DB.insert_users_tasks(task_id=task_id, user_id=ID, position="author")
+        else:
+            response["status"] = "Board does not contain this user"
+    else:
+        response["status"] = "Bad request"
     return jsonify(response)
 
 
