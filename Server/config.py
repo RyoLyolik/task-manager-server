@@ -2,10 +2,19 @@ from datetime import timedelta
 
 
 class FlaskConfig:
-    JWT_SECRET_KEY = "please-remember-to-change-me"
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
+    secret_key = "KEY"
     DEBUG = True
 
+class JWTConfig:
+    JWT_SECRET_KEY = "please-remember-to-change-me"
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=48)
+
+class CORSConfig:
+    resources = {
+        r"/*":{ # куда будут приходить запросы (в данном случае на любой адрес сервера)
+            "origins": "http://localhost:3000/*" # откуда будут приходить запросы
+        }
+    }
 
 class DataBaseConfig:
     dbname = "Ivnix"

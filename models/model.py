@@ -98,14 +98,15 @@ users_boards = Table(
     'users_boards',
     metadata,
     Column('user_id', ForeignKey("users.user_id")),
-    Column("board_id", ForeignKey("board.board_id"))
+    Column("board_id", ForeignKey("board.board_id")),
+    Column("user_position", String, nullable=False, default="user")
 )
 
 files = Table(
     "files",
     metadata,
     Column('file_id', Integer, primary_key=True,autoincrement='auto'),
-    Column('filename', String(256), nullable=False),
+    Column('filename', String(250), nullable=False),
     Column('task_id', ForeignKey("tasks.task_id"))
 )
 
@@ -114,5 +115,6 @@ comments = Table(
     metadata,
     Column('comment_id', Integer, primary_key=True),
     Column('task_id', ForeignKey('tasks.task_id')),
-    Column('content', String(5000), nullable=False)
+    Column('content', String(250), nullable=False),
+    Column('date_time', DateTime)
 )

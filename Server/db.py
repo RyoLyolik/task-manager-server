@@ -1,4 +1,4 @@
-# Тут будут функции по работе с бд
+# ЭТО СТАРАЯ ВЕРСИЯ СЕРВЕРЕА НОВАЯ НАЗЫВАЕТСЯ server.py
 
 import psycopg2
 from psycopg2.errors import *  # TODO: на будущее, чтобы разобраться с ошибками в бд( нужно как-то отменять запись)
@@ -20,12 +20,11 @@ class MainDB:
 
     def insert_user(self, phone, password):
         cursor = self.cursor()
-        password_hash = hashing_password(password, phone)  # getting hash of password
         cursor.execute(
             """
             INSERT INTO USERS (phone_number, password) VALUES (%s, %s) RETURNING user_id
             """,
-            (phone, password_hash,)
+            (phone, password,)
         )
         u_id = cursor.fetchone()[0]
         self.conn.commit()
@@ -83,6 +82,18 @@ class MainDB:
         cursor.close()
         return boards
 
+    def get_users_boards_by_user_board(self, user_id, board_id):
+        cursor = self.cursor()
+        cursor.execute(
+            """
+            SELECT * FROM users_boards WHERE (user_id,board_id) = (%s, %s) 
+            """,
+            (user_id, board_id,)
+        )
+        boards_users = cursor.fetchall()
+        cursor.close()
+        return boards_users
+
     def get_board(self, board_id):
         cursor = self.cursor()
         cursor.execute(
@@ -118,7 +129,7 @@ class MainDB:
         if self.get_user(ID=user_id):
             cursor = self.cursor()
             cursor.execute(
-                """INSERT INTO users_boards (user_id, task_id, user_position) VALUES (%s, %s, %s)""",
+                """INSERT INTO users_tasks (user_id, task_id, user_position) VALUES (%s, %s, %s)""",
                 (user_id, task_id, position)
             )
             self.conn.commit()
