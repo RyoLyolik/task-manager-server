@@ -302,10 +302,10 @@
 # if __name__ == "__main__":
 #     main()
 
-x = {"1","2","3"}
-y = {
-    "1":1,
-    "2":2,
-    "3":3
-}
-print(x - y.keys())
+s = """
+                UPDATE board
+                SET {}
+                WHERE board_id = %s
+                """
+
+print(s.format("qwe"))

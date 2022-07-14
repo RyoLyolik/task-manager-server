@@ -4,6 +4,7 @@ import psycopg2
 from psycopg2.errors import *  # TODO: на будущее, чтобы разобраться с ошибками в бд( нужно как-то отменять запись)
 from ADDITIONAL import hashing_password
 from config import DataBaseConfig
+import re
 
 
 class MainDB:
@@ -135,11 +136,6 @@ class MainDB:
             self.conn.commit()
             cursor.close()
 
-    def custom_query(self, fnc):
-        cursor = self.cursor()
-        X = fnc(cursor)
-        return X
-
     def get_tasks_by_board(self, board_id):
         if self.get_board(board_id):
             cursor = self.cursor()
@@ -150,11 +146,24 @@ class MainDB:
                 (board_id,)
             )
             tasks = cursor.fetchall()
+            cursor.close()
             return tasks
 
+
     def get_users_tasks(self, task_id=None, user_id=None):
-        cursor = self.cursor()
+        if task_id and user_id:
+            cursor = self.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM users_tasks WHERE (task_id, user_id) = (%s,%s)
+                """,
+                (task_id, user_id,)
+            )
+            user_task = cursor.fetchall()
+            cursor.close()
+            return user_task
         if task_id:
+            cursor = self.cursor()
             cursor.execute(
                 """
                 SELECT * FROM users_tasks WHERE task_id=%s
@@ -162,7 +171,94 @@ class MainDB:
                 (task_id,)
             )
             task_info = cursor.fetchall()
+            cursor.close()
             return task_info
+
+    def update_board(self, board_id,
+                     new_name=None,
+                     new_deadline=None,
+                     new_color=None,
+                     new_description=None,
+                     new_user_id=None,
+                     new_user_position=None,
+                     delete_user=None):
+        if board_id:
+            cursor = self.cursor()
+            query =  """
+            UPDATE board
+            SET {}
+            WHERE board_id = %s
+            """
+            if new_name:
+                cursor.execute(
+                    query.format("name=%s"),
+                    (new_name,board_id,)
+                )
+            if new_deadline:
+                cursor.execute(
+                    query.format("deadline=%s"),
+                    (new_deadline, board_id,)
+                )
+            if new_color:
+                cursor.execute(
+                    query.format("color=%s"),
+                    (new_color, board_id,)
+                )
+            if new_description:
+                cursor.execute(
+                    query.format("description=%s"),
+                    (new_description, board_id,)
+                )
+            if new_user_id:
+                self.insert_users_boards(user_id=new_user_id, board_id=board_id, user_position=new_user_position)
+            if delete_user:
+                cursor.execute(
+                    """
+                    DELETE FROM users_boards WHERE user_id=%s
+                    """,
+                    (delete_user,)
+                )
+            self.conn.commit()
+
+    def update_task(self, task_id,
+                    new_name=None,
+                    new_deadline=None,
+                    new_performer=None,
+                    new_supervisor=None,
+                    new_description=None,
+                    new_stage=None):
+        if task_id:
+            cursor = self.cursor()
+            query="""
+            UPDATE tasks
+            SET {}
+            WHERE task_id=%s
+            """
+            if new_name:
+                cursor.execute(query.format("name"),
+                               (new_name,))
+            if new_deadline:
+                cursor.execute(query.format("deadline"),
+                               (new_deadline,))
+            if new_stage:
+                cursor.execute(query.format("stage"),
+                               (new_stage,))
+            if new_description:
+                cursor.execute(query.format("description"),
+                               (new_description,))
+
+            if new_performer:
+                self.insert_users_tasks(task_id=task_id, user_id=new_performer, position="performer")
+            if new_supervisor:
+                self.insert_users_tasks(task_id=task_id, user_id=new_supervisor, position="supervisor")
+            self.conn.commit()
+
+
+    def custom_query(self, fnc):
+        cursor = self.cursor()
+        X = fnc(cursor)
+        return X
+
     ################# EXAMPLE FOR REUSABLE FUNCTION ######################
     # def run_custom_query():
     #     @DB.custom_query

@@ -13,8 +13,8 @@ app = Flask(__name__)
 app.secret_key = FlaskConfig.secret_key
 JWT = JWTManager(app)
 cors = CORS(
-    app,
-    resources=CORSConfig.resources
+    app
+    # resources=CORSConfig.resources
 )
 
 
@@ -40,7 +40,6 @@ def refresh_expiring_jwts(response):
 def login():
     req = request.json
     response = dict()
-
     if "phone" in req and "password" in req:
         user = DB.get_user(phone=req['phone'])
         if user is not None:
@@ -55,7 +54,7 @@ def login():
     else:
         response["status"] = "Bad request"
 
-    return jsonify(response)
+    return jsonify(response),201
 
 
 @app.route('/logout')
@@ -160,7 +159,7 @@ def board_info():
                             "performer": task_users[1][0],
                             "supervisor": task_users[2][0]
                         }
-                BOARD["board"]["tasks"] = tasks
+                BOARD["tasks"] = tasks
 
                 response["board"] = BOARD
             else:
@@ -196,6 +195,7 @@ def task_info():
         response["status"] = "Bad request"
     return jsonify(response)
 
+
 @app.route('/add/board', methods=["POST"])
 @jwt_required()
 def add_board():
@@ -209,7 +209,8 @@ def add_board():
         response["status"] = "Bad request"
     return jsonify(response)
 
-@app.route('/add/task')
+
+@app.route('/add/task', methods=["POST"])
 @jwt_required()
 def add_task():
     ID = get_jwt_identity()
@@ -219,7 +220,8 @@ def add_task():
     if not ({"name", "board_id", "description", "deadline"} - req.keys()):
         board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=req["board_id"])
         if board_user is not None:
-            task_id = DB.insert_task(name=req["name"], board_id=req["board_id"], description=req["description"], deadline=req["deadline"])
+            task_id = DB.insert_task(name=req["name"], board_id=req["board_id"], description=req["description"],
+                                     deadline=req["deadline"])
             DB.insert_users_tasks(task_id=task_id, user_id=ID, position="author")
         else:
             response["status"] = "Board does not contain this user"
@@ -227,6 +229,65 @@ def add_task():
         response["status"] = "Bad request"
     return jsonify(response)
 
+
+@app.route('/board/edit', methods=["POST"])
+@jwt_required()
+def board_edit():
+    ID = get_jwt_identity()
+    req = request.json()
+    response = dict()
+    if not ({"board_id", "new_name", "new_color", "new_deadline", "new_description", "new_user_id", "new_user_position",
+             "delete_user"} - req.keys):
+        board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=req["board_id"])
+        board_user.sort(key=lambda x: x[2])
+        if board_user is not None and board_user[0][2] == "admin":
+            DB.update_board(
+                req["board_id"],
+                new_name=req["new_name"],
+                new_color=req["new_color"],
+                new_deadline=req["new_deadline"],
+                new_description=req["new_description"],
+                new_user_id=req["new_user_id"],
+                new_user_position=req["new_user_position"],
+                delete_user=req["delete_user"]
+            )
+        else:
+            response["status"] = "User is not admin of this board"
+    else:
+        response["status"] = "Bad request"
+    return jsonify(response)
+
+
+@app.route('/task/edit', methods=["POST"])
+@jwt_required()
+def task_edit():
+    ID = get_jwt_identity()
+    req = request.json
+    response = dict()
+    if not ({"task_id", "new_name", "new_deadline", "new_description", "new_stage", "new_performer",
+             "new_supervisor"} - req.keys()):
+        task = DB.get_task(task_id=req["task_id"])
+        board_id = task[2]
+        task_user = DB.get_users_tasks(task_id=req["task_id"], user_id=ID)
+        task_user.sort(key=lambda x:x[2])
+        board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
+        board_user.sort(key=lambda x:x[2])
+        if board_user[0][2] == "admin" or task_user[0][2] == "author":
+            DB.update_task(
+                task_id=req["task_id"],
+                new_name=req["new_name"],
+                new_deadline=req["new_deadline"],
+                new_description=req["new_description"],
+                new_stage=req["new_stage"],
+                new_performer=req["performer"],
+                new_supervisor=req["new_supervisor"]
+            )
+        else:
+            response["status"] = "User cannot do this"
+    else:
+        response["status"] = "Bad request"
+
+    return jsonify(response)
 
 
 if __name__ == '__main__':

@@ -62,9 +62,7 @@ tasks_table = Table(
     Column('board_id', ForeignKey('board.board_id'), nullable=False),
     Column('description', String(collation='ru-RU-x-icu'), nullable=True),
     Column('deadline', Date, nullable=True),
-    # Column('comments', String(collation='ru-RU-x-icu'), nullable=True),
-    Column('completed', Boolean, default=False)
-    # Column('attachments', String)
+    Column('stage', Integer, default=False)
 )
 
 delete_table = Table(
