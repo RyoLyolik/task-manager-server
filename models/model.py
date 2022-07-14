@@ -41,7 +41,6 @@ users_table = Table(
     Column('phone_number', String(16), unique=True),
     Column('password', String(256), nullable=False),
     Column('email', String(256), unique=True),
-    Column('yandex_email', String(256), unique=True),
     Column('telegram_id', Integer, unique=True)
 )
 board_table = Table(
@@ -105,7 +104,8 @@ files = Table(
     metadata,
     Column('file_id', Integer, primary_key=True,autoincrement='auto'),
     Column('filename', String(250), nullable=False),
-    Column('task_id', ForeignKey("tasks.task_id"))
+    Column('task_id', ForeignKey("tasks.task_id")),
+    Column('author_id', ForeignKey("users.user_id"))
 )
 
 comments = Table(
@@ -114,5 +114,6 @@ comments = Table(
     Column('comment_id', Integer, primary_key=True),
     Column('task_id', ForeignKey('tasks.task_id')),
     Column('content', String(250), nullable=False),
+    Column('author_id', ForeignKey("users.user_id")),
     Column('date_time', DateTime)
 )

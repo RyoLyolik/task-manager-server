@@ -235,16 +235,16 @@ class MainDB:
             WHERE task_id=%s
             """
             if new_name:
-                cursor.execute(query.format("name"),
+                cursor.execute(query.format("name=%s"),
                                (new_name,))
             if new_deadline:
-                cursor.execute(query.format("deadline"),
+                cursor.execute(query.format("deadline=%s"),
                                (new_deadline,))
             if new_stage:
                 cursor.execute(query.format("stage"),
                                (new_stage,))
             if new_description:
-                cursor.execute(query.format("description"),
+                cursor.execute(query.format("description=%s"),
                                (new_description,))
 
             if new_performer:
@@ -253,6 +253,158 @@ class MainDB:
                 self.insert_users_tasks(task_id=task_id, user_id=new_supervisor, position="supervisor")
             self.conn.commit()
 
+    def insert_comment(self, task_id, author_id, content, date_time):
+        if (task_id and author_id and content and date_time):
+            cursor = self.cursor()
+            cursor.execute(
+                """
+                INSERT INTO comments (task_id, content, date_time, author_id) = (%s,%s,%s,%s) RETURNING comment_id
+                """,
+                (task_id, content, date_time, author_id,)
+            )
+            cursor.fetchone()
+            return cursor
+
+    def update_user(self, user_id,
+                    new_name=None,
+                    new_phone=None,
+                    new_password=None,
+                    new_email=None,
+                    new_telegram=None):
+        cursor = self.cursor()
+        query = """
+        UPDATE users
+        SET {}
+        WHERE user_id=%s
+        """
+        if new_name:
+            cursor.execute(query.format("name=%s"),
+                           (new_name,))
+        if new_phone:
+            try:
+                cursor.execute(query.format("phone_number=%s"),
+                               (new_phone,))
+            except (Exception):
+                self.conn.rollback()
+
+        if new_password:
+            cursor.execute(query.format("password=%s"),
+                           (new_password,))
+
+        if new_email:
+            try:
+                cursor.execute(query.format("email=%s"),
+                               (new_email,))
+            except (Exception):
+                self.conn.rollback()
+
+        if new_telegram:
+            try:
+                cursor.execute(query.format("telegram_id=%s"),
+                               (new_telegram,))
+            except (Exception):
+                self.conn.rollback()
+        cursor.close()
+        self.conn.commit()
+
+    def delete_users_tasks(self, user_id=None, task_id=None, position=None):
+        if user_id and task_id and position:
+            cursor = self.cursor()
+            cursor.execute(
+                """
+                DELETE FROM users_tasks WHERE (user_id, task_id, position) = (%s,%s,%s)
+                """,
+                (user_id,task_id,position,)
+            )
+            self.conn.commit()
+            cursor.close()
+        elif task_id:
+            cursor = self.cursor()
+            cursor.execute(
+                """
+                DELETE FROM users_tasks WHERE task_id = %s
+                """,
+                (task_id,)
+            )
+            self.conn.commit()
+            cursor.close()
+
+    def get_comment(self, comment_id):
+        cursor = self.cursor()
+        cursor.execute(
+            """
+            SELECT * 
+            FROM comments 
+            WHERE comment_id=%s
+            """,
+            (comment_id,)
+        )
+        comment = cursor.fetchone()
+        cursor.close()
+        return comment
+
+    def get_comments(self, task_id):
+        cursor = self.cursor()
+        cursor.execute(
+            """
+            SELECT * 
+            FROM comments 
+            WHERE task_id=%s
+            """,
+            (task_id,)
+        )
+        comment = cursor.fetchall()
+        cursor.close()
+        return comment
+
+    def delete_comment(self, comment_id):
+        cursor = self.cursor()
+        cursor.execute(
+            """
+            DELETE FROM comments WHERE comment_id=%s
+            """,
+            (comment_id,)
+        )
+        self.conn.commit()
+        cursor.close()
+
+    def delete_board(self, board_id):
+        cursor = self.cursor()
+        cursor.execute(
+            """
+            DELETE
+            FROM board
+            WHERE board_id=%s
+            """,
+            (board_id,)
+        )
+        self.conn.commit()
+        cursor.close()
+
+    def delete_task(self, task_id):
+        cursor = self.cursor()
+        cursor.execute(
+            """
+            DELETE
+            FROM tasks
+            WHERE task_id=%s
+            """,
+            (task_id,)
+        )
+        self.conn.commit()
+        cursor.close()
+
+    def delete_users_boards(self, board_id=None, user_id=None):
+        if board_id:
+            cursor = self.cursor()
+            cursor.execute(
+                """
+                DELETE
+                FROM users_boards
+                WHERE board_id=%s
+                """,
+                (board_id,)
+            )
 
     def custom_query(self, fnc):
         cursor = self.cursor()

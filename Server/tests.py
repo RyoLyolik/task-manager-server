@@ -301,11 +301,7 @@
 #
 # if __name__ == "__main__":
 #     main()
-
-s = """
-                UPDATE board
-                SET {}
-                WHERE board_id = %s
-                """
-
-print(s.format("qwe"))
+x = None
+y = 1
+if x and y:
+    print(123)
