@@ -96,8 +96,7 @@ def profile_info():
         "name": user[1],
         "phone_number": user[2],
         "email": user[4],
-        "yandex_email": user[5],
-        "telegram_id": user[6]
+        "telegram_id": user[5]
     }
     response = {
         'user_info': USER
@@ -145,20 +144,24 @@ def board_info():
 
                 board_tasks = DB.get_tasks_by_board(req["board_id"])
                 tasks = dict()
-                print(board_tasks)
                 if board_tasks:
                     for task in board_tasks:
                         task_users = DB.get_users_tasks(task_id=task[0])
-                        task_users.sort(key=lambda x: x[2])
-
                         tasks[task[0]] = {
                             "name": task[1],
                             "deadline": task[4],
                             "description": task[3],
-                            "author": task_users[0][0],
-                            "performer": task_users[1][0],
-                            "supervisor": task_users[2][0]
+                            "authors": [],
+                            "performers": [],
+                            "supervisors": []
                         }
+                        for pos in task_users:
+                            if pos[2] == "author":
+                                tasks[task[0]]["authors"].append(pos[0])
+                            elif pos[2] == "performer":
+                                tasks[task[0]]["performers"].append(pos[0])
+                            elif pos[2] == "supervisor":
+                                tasks[task[0]]["supervisors"].append(pos[0])
                 BOARD["tasks"] = tasks
 
                 response["board"] = BOARD
@@ -180,23 +183,44 @@ def task_info():
     response = dict()
     if "task_id" in req:
         task = DB.get_task(req["task_id"])
-        board_id = task[2]
-        board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
-        if board_user is not None:
-            task_users = DB.get_users_tasks(task_id=req["task_id"])
-            task_users.sort(key=lambda x: x[2])
-            TASK = {
-                "id": task[0],
-                "name": task[1],
-                "deadline": task[4],
-                "description": task[3],
-                "author": task_users[0][0],
-                "performer": task_users[1][0],
-                "supervisor": task_users[2][0]
-            }
-            response["task"] = TASK
+        if task:
+            board_id = task[2]
+            board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
+            if board_user is not None:
+                task_users = DB.get_users_tasks(task_id=req["task_id"])
+                TASK = {
+                    "name": task[1],
+                    "deadline": task[4],
+                    "description": task[3],
+                    "authors": [],
+                    "performers": [],
+                    "supervisors": [],
+                    "comments": dict()
+                }
+
+                comments = DB.get_comments(task_id=req["task_id"])
+
+                for comment in comments:
+                    TASK["comments"][comment[0]] = {
+                        "author": comment[4],
+                        "content": comment[2],
+                        "task_id": comment[1],
+                        "date_time": comment[3]
+                    }
+
+
+                for pos in task_users:
+                    if pos[2] == "author":
+                        TASK["authors"].append(pos[0])
+                    elif pos[2] == "performer":
+                        TASK["performers"].append(pos[0])
+                    elif pos[2] == "supervisor":
+                        TASK["supervisors"].append(pos[0])
+                response["task"] = TASK
+            else:
+                response["status"] = "Access denied"
         else:
-            response["status"] = "Access denied"
+            response["status"] = "Wrong task"
     else:
         response["status"] = "Bad request"
     return jsonify(response)
@@ -240,13 +264,15 @@ def add_task():
 @jwt_required()
 def board_edit():
     ID = get_jwt_identity()
-    req = request.json()
+    req = request.json
     response = dict()
     if not ({"board_id", "new_name", "new_color", "new_deadline", "new_description", "new_user_id", "new_user_position",
-             "delete_user"} - req.keys):
+             "delete_user"} - req.keys()):
         board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=req["board_id"])
         board_user.sort(key=lambda x: x[2])
-        if board_user is not None and board_user[0][2] == "admin":
+        new_user = DB.get_user(ID=ID)
+        req["new_user_id"] = req["new_user_id"] if new_user is not None else False
+        if board_user is not None and board_user[0][2] == "admin" and ID != req["board_id"]:
             DB.update_board(
                 req["board_id"],
                 new_name=req["new_name"],
@@ -279,6 +305,13 @@ def task_edit():
             task_user.sort(key=lambda x: x[2])
             board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
             board_user.sort(key=lambda x: x[2])
+
+            new_performer = DB.get_user(ID=req["new_performer"])
+            new_supervisor = DB.get_user(ID=req["new_supervisor"])
+
+            req["new_performer"] = req["new_performer"] if new_performer is not None else False
+            req["new_supervisor"] = req["new_supervisor"] if new_supervisor is not None else False
+
             if board_user[0][2] == "admin" or task_user[0][2] == "author":
                 DB.update_task(
                     task_id=req["task_id"],
@@ -286,7 +319,7 @@ def task_edit():
                     new_deadline=req["new_deadline"],
                     new_description=req["new_description"],
                     new_stage=req["new_stage"],
-                    new_performer=req["performer"],
+                    new_performer=req["new_performer"],
                     new_supervisor=req["new_supervisor"]
                 )
             else:
@@ -305,7 +338,7 @@ def task_add_comment():
     ID = get_jwt_identity()
     req = request.json
     response = dict()
-    if not ({"task_id", "author_id", "content"} - req.keys()):
+    if not ({"task_id", "content"} - req.keys()):
         task = DB.get_task(task_id=req["task_id"])
         if task is not None:
             board_id = task[2]
@@ -341,7 +374,7 @@ def profile_edit():
     ID = get_jwt_identity()
     req = request.json
     response = dict()
-    if not ({"old_password", "new_name", "new_phone", "new_email", "new_telegram", "new_password"} - req.key()):
+    if not ({"old_password", "new_name", "new_phone", "new_email", "new_telegram", "new_password"} - req.keys()):
         user = DB.get_user(ID=ID)
         if user is not None:
             old_password_hash = user[3]
@@ -380,10 +413,18 @@ def task_delete_performer():
         if user and performer and task:
             board_id = task[2]
             board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
-            board_user.sort(key=lambda x: x[2])
             task_user = DB.get_users_tasks(task_id=req["task_id"], user_id=ID)
-            task_user.sort(ket=lambda x: x[2])
-            if board_user[0][2] == "admin" or task_user[0][2] == "author":
+            t1 = False
+            for U in board_user:
+                if U[2] == "admin":
+                    t1 = True
+                    break
+            t2 = False
+            for U in task_user:
+                if U[2] == "author":
+                    t2 = True
+                    break
+            if t1 or t2:
                 DB.delete_users_tasks(user_id=req["user_id"], task_id=req["task_id"], position="performer")
             else:
                 response["status"] = "Access denied"
@@ -396,21 +437,29 @@ def task_delete_performer():
 
 @app.route('/task/delete/supervisor', methods=["POST"])
 @jwt_required()
-def task_delete_performer():
+def task_delete_supervisor():
     ID = get_jwt_identity()
     req = request.json
     response = dict()
     if not ({"user_id", "task_id"} - req.keys()):
         user = DB.get_user(ID=ID)
-        performer = DB.get_user(ID=req["user_id"])
+        supervisor = DB.get_user(ID=req["user_id"])
         task = DB.get_task(task_id=req["task_id"])
-        if user and performer and task:
+        if user and supervisor and task:
             board_id = task[2]
             board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
-            board_user.sort(key=lambda x: x[2])
             task_user = DB.get_users_tasks(task_id=req["task_id"], user_id=ID)
-            task_user.sort(ket=lambda x: x[2])
-            if board_user[0][2] == "admin" or task_user[0][2] == "author":
+            t1 = False
+            for U in board_user:
+                if U[2] == "admin":
+                    t1 = True
+                    break
+            t2 = False
+            for U in task_user:
+                if U[2] == "author":
+                    t2 = True
+                    break
+            if t1 or t2:
                 DB.delete_users_tasks(user_id=req["user_id"], task_id=req["task_id"], position="supervisor")
             else:
                 response["status"] = "Access denied"
@@ -448,17 +497,23 @@ def delete_board():
         board = DB.get_board(board_id=req["board_id"])
         if board:
             board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=req["board_id"])
+            user_test = False
+            for us_bo in board_user:
+                if us_bo[2] == "admin":
+                    user_test = True
             board_user.sort(key=lambda x: x[2])
-            if board_user[0][2] == "admin":
+            if user_test:
+                DB.delete_users_boards(board_id=req["board_id"])
                 DB.delete_board(board_id=req["board_id"])
                 board_tasks = DB.get_tasks_by_board(board_id=req["board_id"])
-                for task in board_tasks:
-                    DB.delete_task(task[0])
-                    DB.delete_users_tasks(task_id=task[0])
-                    task_comments = DB.get_comments(task_id=task[0])
-                    for comment in task_comments:
-                        DB.delete_comment(comment[0])
-                DB.delete_users_boards(board_id=req["board_id"])
+                if board_tasks:
+                    for task in board_tasks:
+                        DB.delete_users_tasks(task_id=task[0])
+                        DB.delete_task(task[0])
+                        task_comments = DB.get_comments(task_id=task[0])
+                        if task_comments:
+                            for comment in task_comments:
+                                DB.delete_comment(comment[0])
             else:
                 response["status"] = "Access denied"
         else:
@@ -486,8 +541,8 @@ def delete_task():
                 task_user.sort(key=lambda x:x[2])
                 if board_user[0][2] == "admin" or task_user[0][2] == "author":
                     task_comments = DB.get_comments(task_id=req["task_id"])
-                    DB.delete_task(req["task_id"])
                     DB.delete_users_tasks(task_id=req["task_id"])
+                    DB.delete_task(req["task_id"])
                     for comment in task_comments:
                         DB.delete_comment(comment[0])
                 else:

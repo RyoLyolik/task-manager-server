@@ -125,6 +125,8 @@ class MainDB:
             SELECT * FROM tasks WHERE task_id=%s
             """, (task_id,)
         )
+        task = cursor.fetchone()
+        return task
 
     def insert_users_tasks(self, task_id, user_id, position):
         if self.get_user(ID=user_id):
@@ -236,16 +238,16 @@ class MainDB:
             """
             if new_name:
                 cursor.execute(query.format("name=%s"),
-                               (new_name,))
+                               (new_name,task_id,))
             if new_deadline:
                 cursor.execute(query.format("deadline=%s"),
-                               (new_deadline,))
+                               (new_deadline,task_id,))
             if new_stage:
-                cursor.execute(query.format("stage"),
-                               (new_stage,))
+                cursor.execute(query.format("stage=%s"),
+                               (new_stage,task_id,))
             if new_description:
                 cursor.execute(query.format("description=%s"),
-                               (new_description,))
+                               (new_description,task_id,))
 
             if new_performer:
                 self.insert_users_tasks(task_id=task_id, user_id=new_performer, position="performer")
@@ -258,11 +260,15 @@ class MainDB:
             cursor = self.cursor()
             cursor.execute(
                 """
-                INSERT INTO comments (task_id, content, date_time, author_id) = (%s,%s,%s,%s) RETURNING comment_id
+                INSERT
+                INTO comments (task_id, content, date_time, author_id) 
+                VALUES (%s,%s,%s,%s) 
+                RETURNING comment_id
                 """,
                 (task_id, content, date_time, author_id,)
             )
             cursor.fetchone()
+            self.conn.commit()
             return cursor
 
     def update_user(self, user_id,
@@ -279,40 +285,40 @@ class MainDB:
         """
         if new_name:
             cursor.execute(query.format("name=%s"),
-                           (new_name,))
+                           (new_name,user_id,))
         if new_phone:
             try:
                 cursor.execute(query.format("phone_number=%s"),
-                               (new_phone,))
+                               (new_phone,user_id,))
             except (Exception):
                 self.conn.rollback()
 
         if new_password:
             cursor.execute(query.format("password=%s"),
-                           (new_password,))
+                           (new_password,user_id,))
 
         if new_email:
             try:
                 cursor.execute(query.format("email=%s"),
-                               (new_email,))
+                               (new_email,user_id,))
             except (Exception):
                 self.conn.rollback()
 
         if new_telegram:
             try:
                 cursor.execute(query.format("telegram_id=%s"),
-                               (new_telegram,))
+                               (new_telegram,user_id,))
             except (Exception):
                 self.conn.rollback()
-        cursor.close()
         self.conn.commit()
+        cursor.close()
 
     def delete_users_tasks(self, user_id=None, task_id=None, position=None):
         if user_id and task_id and position:
             cursor = self.cursor()
             cursor.execute(
                 """
-                DELETE FROM users_tasks WHERE (user_id, task_id, position) = (%s,%s,%s)
+                DELETE FROM users_tasks WHERE (user_id, task_id, user_position) = (%s,%s,%s)
                 """,
                 (user_id,task_id,position,)
             )
@@ -405,6 +411,8 @@ class MainDB:
                 """,
                 (board_id,)
             )
+            self.conn.commit()
+            cursor.close()
 
     def custom_query(self, fnc):
         cursor = self.cursor()
