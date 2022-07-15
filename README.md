@@ -65,3 +65,291 @@ Go to the project folder, open _cmd_ and write:
 **Run _server_**:
 
 Just run `server.py`
+
+# How API works
+
+**Default port -** `8010`<br>
+**Requests type -** raw JSON
+## Routes:
+**[/registration](#registration)**<br>
+**[/login](#login)**<br>
+**[/profile/info](#profileinfo)**<br>
+**[/profile/boards](#profileboards)**<br>
+**[/profile/edit](#profileedit)**<br>
+**[/add/board](#addboard)**<br>
+**[/add/task](#addtask)**<br>
+**[/board/info](#boardinfo)**<br>
+**[/board/edit](#boardedit)**<br>
+**[/task/info](#taskinfo)**<br>
+**[/task/edit](#taskedit)**<br>
+**[/task/add/comment](#taskaddcomment)**<br>
+**[/task/delete/performer](#taskdeleteperformer)**<br>
+**[/task/delete/supervisor](#taskdeletesupervisor)**<br>
+**[/task/delete/comment](#taskdeletecomment)**<br>
+**[/delete/board](#deleteboard)**<br>
+**[/delete/task](#deletetask)**<br>
+**[/user/info](#userinfo)**<br>
+## Requests ans responses
+### /registration
+**Method**: POST
+
+**Receives**:
+ - phone_number
+ - password
+ - password_confirm
+
+**Responses**:
+ - access_token
+
+### /login
+**Method**: POST
+
+**Recieves**:
+ - phone_number
+ - password
+ - password_confirm
+
+**Responses**
+ - access_token
+
+### /profile/info
+**Method**: GET
+
+**Receives**
+ - access_token
+
+**Responses**
+ - access_token
+ - user_info
+   - id
+   - name
+   - phone_number
+   - email
+   - telegram_id
+ 
+### /profile/boards
+
+**Method**: GET
+
+**Receives**
+ - access_token
+
+**Responses**
+ - access_token
+ - board_id
+   - name
+   - deadline
+   - color
+   - description
+
+### /profile/edit
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - old_password
+ - new_name
+ - new_phone
+ - new_password
+ - new_email
+ - new_telegram
+
+**Responses**
+ - access_token
+
+### /add/board
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - name
+ - deadline
+ - color
+ - description
+
+**Responses**
+ - access_token
+
+### /add/task
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - name
+ - board_id
+ - description
+ - deadline
+
+**Responses**
+ - access_token
+
+### /board/info
+
+**Method**: GET
+
+**Receives**
+ - access_token
+ - board_id
+
+**Responses**
+ - access_token
+ - board
+   - name
+   - deadline
+   - color
+   - description
+   - users
+     - user_id
+       - position
+   - tasks
+     - task_id
+       - name
+       - deadline
+       - stage
+       - description
+       - author
+       - performer
+       - supervisor
+
+### /board/edit
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - board_id
+ - new_name
+ - new_color
+ - new_deadline
+ - new_description
+ - new_user_id
+ - new_user_position
+ - delete_user
+
+**Responses**
+ - access_token
+
+### /task/info
+
+**Method**: GET
+
+**Receives**
+ - access_token
+ - task_id
+
+**Responses**
+ - access_token
+ - task
+   - name
+   - board_id
+   - description
+   - deadline
+   - stage
+   - authors
+   - performers
+   - comments
+     - comment_id
+       - author
+       - content
+
+### /task/edit
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - task_id
+ - new_name
+ - new_deadline
+ - new_performer
+ - new_supervisor
+ - new_description
+ - new_stage
+
+**Responses**
+ - access_token
+
+### /task/add/comment
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - task_id
+ - content
+
+**Responses**
+ - access_token
+
+### /task/delete/performer
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - task_id
+ - user_id
+
+**Responses**
+ - access_token
+
+### /task/delete/supervisor
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - task_id
+ - user_id
+
+**Responses**
+ - access_token
+
+### /task/delete/comment
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - comment_id
+
+**Responses**
+ - access_token
+
+### /delete/board
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - board_id
+
+**Responses**
+ - access_token
+
+### /delete/task
+
+**Method**: POST
+
+**Receives**
+ - access_token
+ - task_id
+
+**Responses**
+ - access_token
+
+### /user/info
+
+**Method**: GET
+
+**Receives**
+ - access_token
+ - user_id
+
+**Responses**
+ - user_info
+   - id
+   - name

@@ -83,17 +83,30 @@ class MainDB:
         cursor.close()
         return boards
 
-    def get_users_boards_by_user_board(self, user_id, board_id):
-        cursor = self.cursor()
-        cursor.execute(
-            """
-            SELECT * FROM users_boards WHERE (user_id,board_id) = (%s, %s) 
-            """,
-            (user_id, board_id,)
-        )
-        boards_users = cursor.fetchall()
-        cursor.close()
-        return boards_users
+    def get_users_boards_by_user_board(self, user_id=None, board_id=None):
+        if user_id and board_id:
+            cursor = self.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM users_boards WHERE (user_id,board_id) = (%s, %s) 
+                """,
+                (user_id, board_id,)
+            )
+            boards_users = cursor.fetchall()
+            cursor.close()
+            return boards_users
+        if board_id:
+            cursor = self.cursor()
+            cursor.execute(
+                """
+                SELECT * 
+                FROM users_boards
+                WHERE board_id=%s
+                """,
+                (board_id,)
+            )
+            board_users = cursor.fetchall()
+            return board_users
 
     def get_board(self, board_id):
         cursor = self.cursor()

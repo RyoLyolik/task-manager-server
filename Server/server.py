@@ -103,6 +103,25 @@ def profile_info():
     }
     return jsonify(response)
 
+@app.route('/user/info', methods=["GET"])
+@jwt_required()
+def user_info():
+    ID = get_jwt_identity()
+    req = request.json
+    response = dict()
+    if "user_id" in req:
+        user = DB.get_user(ID=req["user_id"])
+        if user:
+            USER = {
+                "id": ID,
+                "name": user[1]
+            }
+            response["user_info"] = USER
+        else:
+            response["status"] = "User does not exist"
+    else:
+        response["status"] = "Bad request"
+    return jsonify(response)
 
 @app.route('/profile/boards', methods=["GET"])
 @jwt_required()
@@ -143,7 +162,9 @@ def board_info():
                 }
 
                 board_tasks = DB.get_tasks_by_board(req["board_id"])
+                board_users = DB.get_users_boards_by_user_board(board_id=req["board_id"])
                 tasks = dict()
+                users = dict()
                 if board_tasks:
                     for task in board_tasks:
                         task_users = DB.get_users_tasks(task_id=task[0])
@@ -162,7 +183,11 @@ def board_info():
                                 tasks[task[0]]["performers"].append(pos[0])
                             elif pos[2] == "supervisor":
                                 tasks[task[0]]["supervisors"].append(pos[0])
+                if board_users:
+                    for user in board_users:
+                        users[user[0]] = user[2]
                 BOARD["tasks"] = tasks
+                BOARD["users"] = users
 
                 response["board"] = BOARD
             else:
@@ -192,6 +217,7 @@ def task_info():
                     "name": task[1],
                     "deadline": task[4],
                     "description": task[3],
+                    "stage": task[5],
                     "authors": [],
                     "performers": [],
                     "supervisors": [],
