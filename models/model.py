@@ -32,13 +32,15 @@ convention = {
 }
 
 # Registry for all tables
+
 metadata = MetaData(naming_convention=convention)
+
 users_table = Table(
     'users',
     metadata,
     Column('user_id', Integer, primary_key=True, autoincrement='auto'),
     Column('name', String(collation='ru-RU-x-icu'), unique=True),
-    Column('phone_number', String(16), unique=True),
+    Column('phone_number', String(16), unique=True, nullable=False),
     Column('password', String(256), nullable=False),
     Column('email', String(256), unique=True),
     Column('telegram_id', Integer, unique=True)
@@ -67,12 +69,12 @@ tasks_table = Table(
 delete_table = Table(
     "delete",
     metadata,
-    Column("task_id", Integer, unique=True),
-    Column("board_id", ForeignKey('board.board_id')),
-    Column('comments', String(collation='ru-RU-x-icu'), nullable=True),
-    Column('completed', Boolean, default=False),
-    Column('attachments', String),
-    Column('deadline', DateTime, nullable=True),
+    Column('task_id', Integer, unique=True),
+    Column('name', String(length=64, collation='ru-RU-x-icu'), nullable=False),
+    Column('board_id', ForeignKey('board.board_id'), nullable=False),
+    Column('description', String(collation='ru-RU-x-icu'), nullable=True),
+    Column('deadline', Date, nullable=True),
+    Column('stage', Integer, default=False)
 )
 
 users_tasks = Table(
@@ -113,6 +115,7 @@ comments = Table(
     metadata,
     Column('comment_id', Integer, primary_key=True),
     Column('task_id', ForeignKey('tasks.task_id')),
+    Column('board_id', ForeignKey('board.board_id')),
     Column('content', String(250), nullable=False),
     Column('author_id', ForeignKey("users.user_id")),
     Column('date_time', DateTime)

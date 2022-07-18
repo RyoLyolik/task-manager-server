@@ -12,7 +12,7 @@ Flask server, which handles request from Client
 ***
 
 Install _Python_, _PostgreSQL_, _Minio_. Download the project.
-Install `_requirements.txt_`: `pip install -r requirements.txt`
+Install `requirements.txt`: `pip install -r requirements.txt`
 
 ## How to run
 ***
@@ -22,6 +22,8 @@ Find and edit next row in `alembic.ini`:
 sqlalchemy.url = postgresql://%USERNAME%:%PASSWORD%@%HOST%/%DB_NAME%
 ```
 
+Write in console: `alembic upgrade head`
+
 Then edit `Server\config.py`:
 
 ```python
@@ -29,9 +31,17 @@ from datetime import timedelta
 
 
 class FlaskConfig:
-    JWT_SECRET_KEY = "YOUR_SECRET_KEY"
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)  # session life time
+    secret_key = "KEY"
     DEBUG = True
+
+
+class JWTConfig:
+    JWT_SECRET_KEY = "please-remember-to-change-me"
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=48) # session lifetime
+
+
+class CORSConfig:
+    pass
 
 
 class DataBaseConfig:

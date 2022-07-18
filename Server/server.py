@@ -1,4 +1,3 @@
-import requests
 from flask import *
 from flask_jwt_extended import *
 import json
@@ -14,7 +13,6 @@ app.secret_key = FlaskConfig.secret_key
 JWT = JWTManager(app)
 cors = CORS(
     app
-    # resources=CORSConfig.resources
 )
 
 
@@ -41,7 +39,7 @@ def login():
     req = request.json
     response = dict()
     if "phone" in req and "password" in req:
-        user = DB.get_user(phone=req['phone'])
+        user = DB.get_user(phone_number=req['phone'])
         if user is not None:
             password_verification = hashing_password(password=req["password"], phone=req["phone"]) == user[3]
             if password_verification:
@@ -69,11 +67,11 @@ def registration():
     req = request.json
     response = dict()
     if not ({"password", "password_confirm", "phone"} - req.keys()):
-        user = DB.get_user(phone=req['phone'])
+        user = DB.get_user(phone_number=str(req['phone']))
         if user is None:
             if req["password"] == req["password_confirm"]:
-                password_hash = hashing_password(password=req["password"], phone=req["phone"])
-                user_id = DB.insert_user(phone=req["phone"], password=password_hash)
+                password_hash = hashing_password(password=req["password"], phone=str(req["phone"]))
+                user_id = DB.insert_user(phone_number=str(req["phone"]), password=password_hash)
                 access_token = create_access_token(identity=user_id)
                 response["access_token"] = access_token
             else:
@@ -90,18 +88,21 @@ def registration():
 @jwt_required()
 def profile_info():
     ID = get_jwt_identity()
-    user = DB.get_user(ID=ID)
-    USER = {
-        "id": ID,
-        "name": user[1],
-        "phone_number": user[2],
-        "email": user[4],
-        "telegram_id": user[5]
-    }
-    response = {
-        'user_info': USER
-    }
+    user = DB.get_user(user_id=ID)
+    response = dict()
+    if user:
+        USER = {
+            "id": ID,
+            "name": user[1],
+            "phone_number": user[2],
+            "email": user[4],
+            "telegram_id": user[5]
+        }
+        response["user"] = USER
+    else:
+        response["status"] = "User does not exist"
     return jsonify(response)
+
 
 @app.route('/user/info', methods=["GET"])
 @jwt_required()
@@ -110,36 +111,35 @@ def user_info():
     req = request.json
     response = dict()
     if "user_id" in req:
-        user = DB.get_user(ID=req["user_id"])
+        user = DB.get_user(user_id=req["user_id"])
         if user:
             USER = {
                 "id": ID,
                 "name": user[1]
             }
-            response["user_info"] = USER
+            response["user"] = USER
         else:
             response["status"] = "User does not exist"
     else:
         response["status"] = "Bad request"
     return jsonify(response)
 
+
 @app.route('/profile/boards', methods=["GET"])
 @jwt_required()
 def profile_boards():
     ID = get_jwt_identity()
-    boards_ids = DB.get_boards_by_user(user_id=ID)
-    boards_info = [DB.get_board(ID) for ID in boards_ids]
-    BOARDS = dict()
-    for i in range(len(boards_ids)):
-        BOARDS[boards_ids[i]] = {
-            "name": boards_info[i][1],
-            "deadline": boards_info[i][2],
-            "color": boards_info[i][3],
-            "description": boards_info[i][4]
-        }
-    response = {
-        'boards': BOARDS
-    }
+    response = dict()
+    boards_ids = DB.get_boards(user_id=ID)
+    if boards_ids:
+        BOARDS = dict()
+        for b_id in boards_ids:
+            board = DB.get_board(board_id=b_id)
+            if board:
+                BOARDS[b_id] = dict(board)
+        response["boards"] = BOARDS
+    else:
+        response["status"] = "User has no boards"
     return jsonify(response)
 
 
@@ -152,17 +152,12 @@ def board_info():
     if "board_id" in req:
         board = DB.get_board(board_id=req["board_id"])
         if board is not None:
-            board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=req['board_id'])
+            board_user = DB.get_user_board(user_id=ID, board_id=req['board_id'])
             if board_user is not None:
-                BOARD = {
-                    "name": board[1],
-                    "deadline": board[2],
-                    "color": board[3],
-                    "description": board[4]
-                }
+                BOARD = dict(board_user)
 
-                board_tasks = DB.get_tasks_by_board(req["board_id"])
-                board_users = DB.get_users_boards_by_user_board(board_id=req["board_id"])
+                board_tasks = DB.get_tasks(board_id=req["board_id"])
+                board_users = DB.get_users_boards(board_id=req["board_id"])
                 tasks = dict()
                 users = dict()
                 if board_tasks:
@@ -172,20 +167,37 @@ def board_info():
                             "name": task[1],
                             "deadline": task[4],
                             "description": task[3],
-                            "authors": [],
-                            "performers": [],
-                            "supervisors": []
+                            "authors": dict(),
+                            "performers": dict(),
+                            "supervisors": dict()
                         }
-                        for pos in task_users:
-                            if pos[2] == "author":
-                                tasks[task[0]]["authors"].append(pos[0])
-                            elif pos[2] == "performer":
-                                tasks[task[0]]["performers"].append(pos[0])
-                            elif pos[2] == "supervisor":
-                                tasks[task[0]]["supervisors"].append(pos[0])
+                        for task_user in task_users:
+                            user = DB.get_user(user_id=task_user[0])
+                            if user:
+                                if task_user[2] == "author":
+                                    tasks[task[0]]["authors"][user[0]] = {
+                                        "user_id": user["user_id"],
+                                        "name": user["name"]
+                                    }
+                                elif task_user[2] == "performer":
+                                    tasks[task[0]]["performers"][user[0]] = {
+                                        "user_id": user["user_id"],
+                                        "name": user["name"]
+                                    }
+                                elif task_user[2] == "supervisor":
+                                    tasks[task[0]]["supervisors"][user[0]] = {
+                                        "user_id": user["user_id"],
+                                        "name": user["name"]
+                                    }
                 if board_users:
                     for user in board_users:
-                        users[user[0]] = user[2]
+                        user_ = DB.get_user(user_id=user[0])
+                        if user_:
+                            users[user[0]] = {
+                                "user_id": user_["user_id"],
+                                "name": user_["name"],
+                                "position": user[2]
+                            }
                 BOARD["tasks"] = tasks
                 BOARD["users"] = users
 
@@ -207,10 +219,10 @@ def task_info():
     req = request.json
     response = dict()
     if "task_id" in req:
-        task = DB.get_task(req["task_id"])
+        task = DB.get_task(task_id=req["task_id"])
         if task:
-            board_id = task[2]
-            board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
+            board_id = task["board_id"]
+            board_user = DB.get_user_board(user_id=ID, board_id=board_id)
             if board_user is not None:
                 task_users = DB.get_users_tasks(task_id=req["task_id"])
                 TASK = {
@@ -218,30 +230,35 @@ def task_info():
                     "deadline": task[4],
                     "description": task[3],
                     "stage": task[5],
-                    "authors": [],
-                    "performers": [],
-                    "supervisors": [],
+                    "authors": dict(),
+                    "performers": dict(),
+                    "supervisors": dict(),
                     "comments": dict()
                 }
 
                 comments = DB.get_comments(task_id=req["task_id"])
+                if comments:
+                    for comment in comments:
+                        TASK["comments"][comment[0]] = dict(comment)
 
-                for comment in comments:
-                    TASK["comments"][comment[0]] = {
-                        "author": comment[4],
-                        "content": comment[2],
-                        "task_id": comment[1],
-                        "date_time": comment[3]
-                    }
-
-
-                for pos in task_users:
-                    if pos[2] == "author":
-                        TASK["authors"].append(pos[0])
-                    elif pos[2] == "performer":
-                        TASK["performers"].append(pos[0])
-                    elif pos[2] == "supervisor":
-                        TASK["supervisors"].append(pos[0])
+                for task_user in task_users:
+                    user = DB.get_user(user_id=task_user[0])
+                    if user:
+                        if task_user[2] == "author":
+                            TASK["authors"][user[0]] = {
+                                "user_id": user["user_id"],
+                                "name": user["name"]
+                            }
+                        elif task_user[2] == "performer":
+                            TASK["performers"][user[0]] = {
+                                "user_id": user["user_id"],
+                                "name": user["name"]
+                            }
+                        elif task_user[2] == "supervisor":
+                            TASK["supervisors"][user[0]] = {
+                                "user_id": user["user_id"],
+                                "name": user["name"]
+                            }
                 response["task"] = TASK
             else:
                 response["status"] = "Access denied"
@@ -258,9 +275,12 @@ def add_board():
     ID = get_jwt_identity()
     req = request.json
     response = dict()
-    if not ({"name", "deadline", "color", "description"} - req.keys()):
-        board_id = DB.insert_board(req["name"], req["color"], req["deadline"], req["description"])
-        DB.insert_users_boards(ID, board_id, user_position="admin")
+    if "name" in req:
+        board_id = DB.insert_board(**req)
+        if board_id:
+            DB.insert_users_boards(user_id=ID, board_id=board_id, user_position="admin")
+        else:
+            response["status"] = "Insertion error"
     else:
         response["status"] = "Bad request"
     return jsonify(response)
@@ -273,12 +293,14 @@ def add_task():
     req = request.json
     response = dict()
 
-    if not ({"name", "board_id", "description", "deadline"} - req.keys()):
-        board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=req["board_id"])
+    if "name" in req and "board_id" in req:
+        board_user = DB.get_user_board(user_id=ID, board_id=req["board_id"])
         if board_user is not None:
-            task_id = DB.insert_task(name=req["name"], board_id=req["board_id"], description=req["description"],
-                                     deadline=req["deadline"])
-            DB.insert_users_tasks(task_id=task_id, user_id=ID, position="author")
+            task_id = DB.insert_task(**req)
+            if task_id:
+                DB.insert_users_tasks(task_id=task_id, user_id=ID, position="author")
+            else:
+                response["status"] = "Insertion error"
         else:
             response["status"] = "Access denied"
     else:
@@ -292,29 +314,37 @@ def board_edit():
     ID = get_jwt_identity()
     req = request.json
     response = dict()
-    if not ({"board_id", "new_name", "new_color", "new_deadline", "new_description", "new_user_id", "new_user_position",
-             "delete_user"} - req.keys()):
-        board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=req["board_id"])
-        board_user.sort(key=lambda x: x[2])
-        new_user = DB.get_user(ID=ID)
-        req["new_user_id"] = req["new_user_id"] if new_user is not None else False
-        if board_user is not None and board_user[0][2] == "admin" and ID != req["board_id"]:
-            DB.update_board(
-                req["board_id"],
-                new_name=req["new_name"],
-                new_color=req["new_color"],
-                new_deadline=req["new_deadline"],
-                new_description=req["new_description"],
-                new_user_id=req["new_user_id"],
-                new_user_position=req["new_user_position"],
-                delete_user=req["delete_user"]
-            )
+    if "board_id" in req:
+        boards_user = DB.get_users_boards(user_id=ID, board_id=req["board_id"], user_position="admin")
+        if boards_user:
+            DB.update_board(**req)
+            response["status"] = "Access denied"
         else:
             response["status"] = "Access denied"
     else:
         response["status"] = "Bad request"
     return jsonify(response)
 
+@app.route('/board/add/user', methods=["POST"])
+@jwt_required()
+def board_add_user():
+    ID = get_jwt_identity()
+    req = request.json
+    response = dict()
+    if "board_id" in req and "user_id" in req and "user_position" in req:
+        board = DB.get_board(board_id=req["board_id"])
+        if board:
+            board_user = DB.get_user_board(user_id=ID, board_id=req["board_id"], user_position="admin")
+            if board_user:
+                DB.insert_users_boards(**req)
+            else:
+                response["status"] = "Access denied"
+        else:
+            response["status"] = "Wrong task"
+    else:
+        response["status"] = "Bad request"
+
+    return jsonify(response)
 
 @app.route('/task/edit', methods=["POST"])
 @jwt_required()
@@ -322,32 +352,14 @@ def task_edit():
     ID = get_jwt_identity()
     req = request.json
     response = dict()
-    if not ({"task_id", "new_name", "new_deadline", "new_description", "new_stage", "new_performer",
-             "new_supervisor"} - req.keys()):
+    if "task_id" in req:
         task = DB.get_task(task_id=req["task_id"])
         if task is not None:
-            board_id = task[2]
-            task_user = DB.get_users_tasks(task_id=req["task_id"], user_id=ID)
-            task_user.sort(key=lambda x: x[2])
-            board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
-            board_user.sort(key=lambda x: x[2])
-
-            new_performer = DB.get_user(ID=req["new_performer"])
-            new_supervisor = DB.get_user(ID=req["new_supervisor"])
-
-            req["new_performer"] = req["new_performer"] if new_performer is not None else False
-            req["new_supervisor"] = req["new_supervisor"] if new_supervisor is not None else False
-
-            if board_user[0][2] == "admin" or task_user[0][2] == "author":
-                DB.update_task(
-                    task_id=req["task_id"],
-                    new_name=req["new_name"],
-                    new_deadline=req["new_deadline"],
-                    new_description=req["new_description"],
-                    new_stage=req["new_stage"],
-                    new_performer=req["new_performer"],
-                    new_supervisor=req["new_supervisor"]
-                )
+            board_id = task["board_id"]
+            task_user = DB.get_user_task(task_id=req["task_id"], user_id=ID, user_position="author")
+            board_user = DB.get_user_board(user_id=ID, board_id=board_id, user_position="admin")
+            if task_user or board_user:
+                DB.update_task(**req)
             else:
                 response["status"] = "Access denied"
         else:
@@ -364,18 +376,15 @@ def task_add_comment():
     ID = get_jwt_identity()
     req = request.json
     response = dict()
-    if not ({"task_id", "content"} - req.keys()):
+    if "task_id" in req and "content" in req:
         task = DB.get_task(task_id=req["task_id"])
         if task is not None:
-            board_id = task[2]
-            user_board = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
+            board_id = task["board_id"]
+            user_board = DB.get_user_board(user_id=ID, board_id=board_id)
             if user_board:
-                DB.insert_comment(
-                    task_id=req["task_id"],
-                    author_id=ID,
-                    content=req["content"],
-                    date_time=datetime.now()
-                )
+                req["author_id"] = ID
+                req["date_time"] = datetime.now()
+                DB.insert_comment(**req)
             else:
                 response["status"] = "Access denied"
         else:
@@ -386,11 +395,33 @@ def task_add_comment():
     return jsonify(response)
 
 
+@app.route('/task/add/user', methods=["POST"])
+@jwt_required()
+def task_add_user():
+    ID = get_jwt_identity()
+    req = request.json
+    response = dict()
+    if "task_id" in req and "user_id" in req and "user_position" in req:
+        task = DB.get_task(task_id=req["task_id"])
+        if task:
+            task_user = DB.get_user_task(user_id=ID, task_id=req["task_id"], user_position="author")
+            board_user = DB.get_user_board(user_id=ID, board_id=task["board_id"], user_position="admin")
+            if task_user or board_user:
+                DB.insert_users_tasks(**req)
+            else:
+                response["status"] = "Access denied"
+        else:
+            response["status"] = "Wrong task"
+    else:
+        response["status"] = "Bad request"
+
+    return jsonify(response)
+
 @app.route('/task/add/file', methods=["POST"])
 @jwt_required()
 def task_add_file():
     return jsonify(
-        {"status": "Я тут ничего не сделал"}
+        {"status": "Я тут ничего не сделал :/"}
     ), 404
 
 
@@ -400,23 +431,22 @@ def profile_edit():
     ID = get_jwt_identity()
     req = request.json
     response = dict()
-    if not ({"old_password", "new_name", "new_phone", "new_email", "new_telegram", "new_password"} - req.keys()):
+    if "changes" in req and "old_password" in req and isinstance(req["changes"], dict):
         user = DB.get_user(ID=ID)
         if user is not None:
-            old_password_hash = user[3]
-            hash_check = hashing_password(password=req["old_password"], phone=user[2])
+            old_password_hash = user["password"]
+            hash_check = hashing_password(password=req["old_password"], phone=user["phone_number"])
             if hash_check == old_password_hash:
-                if req["new_password"]:
-                    req["new_phone"] = req["new_phone"] if req["new_phone"] else user[2]
-                    req["new_password"] = hashing_password(password=req["new_password"], phone=req["new_phone"])
-                DB.update_user(
-                    user_id=ID,
-                    new_name=req["new_name"],
-                    new_phone=req["new_phone"],
-                    new_email=req["new_email"],
-                    new_telegram=req["new_telegram"],
-                    new_password=req["new_password"]
-                )
+                if "password" in req["changes"]:
+                    if "phone_number" not in req["changes"]:
+                        req["changes"]["phone_number"] = user["phone_number"]
+                    if "password" in req["changes"]:
+                        req["changes"]["password"] = hashing_password(password=req["changes"]["password"],
+                                                                      phone=req["changes"]["phone_number"])
+                    else:
+                        req["changes"]["password"] = hashing_password(password=req["old_password"],
+                                                                      phone=req["changes"]["phone_number"])
+                DB.update_user(**req["changes"])
             else:
                 response["status"] = "Wrong password"
         else:
@@ -426,71 +456,21 @@ def profile_edit():
     return jsonify(response)
 
 
-@app.route('/task/delete/performer', methods=["POST"])
+@app.route('/task/delete/user', methods=["POST"])
 @jwt_required()
 def task_delete_performer():
     ID = get_jwt_identity()
     req = request.json
     response = dict()
-    if not ({"user_id", "task_id"} - req.keys()):
-        user = DB.get_user(ID=ID)
-        performer = DB.get_user(ID=req["user_id"])
+    if "position" in req and "user_id" in req and "task_id" in req:
         task = DB.get_task(task_id=req["task_id"])
-        if user and performer and task:
-            board_id = task[2]
-            board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
-            task_user = DB.get_users_tasks(task_id=req["task_id"], user_id=ID)
-            t1 = False
-            for U in board_user:
-                if U[2] == "admin":
-                    t1 = True
-                    break
-            t2 = False
-            for U in task_user:
-                if U[2] == "author":
-                    t2 = True
-                    break
-            if t1 or t2:
-                DB.delete_users_tasks(user_id=req["user_id"], task_id=req["task_id"], position="performer")
-            else:
-                response["status"] = "Access denied"
+        board = DB.get_board(board_id=task["board_id"])
+        task_user = DB.get_user_task(task_id=req["task_id"], user_id=ID, user_position="author")
+        board_user = DB.get_user_board(board_id=board["board_id"], user_id=ID, user_position="admin")
+        if task and board and (task_user or board_user):
+            DB.delete_users_tasks(**req)
         else:
-            response["status"] = "Wrong parameters"
-    else:
-        response["status"] = "Bad request"
-    return jsonify(response)
-
-
-@app.route('/task/delete/supervisor', methods=["POST"])
-@jwt_required()
-def task_delete_supervisor():
-    ID = get_jwt_identity()
-    req = request.json
-    response = dict()
-    if not ({"user_id", "task_id"} - req.keys()):
-        user = DB.get_user(ID=ID)
-        supervisor = DB.get_user(ID=req["user_id"])
-        task = DB.get_task(task_id=req["task_id"])
-        if user and supervisor and task:
-            board_id = task[2]
-            board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
-            task_user = DB.get_users_tasks(task_id=req["task_id"], user_id=ID)
-            t1 = False
-            for U in board_user:
-                if U[2] == "admin":
-                    t1 = True
-                    break
-            t2 = False
-            for U in task_user:
-                if U[2] == "author":
-                    t2 = True
-                    break
-            if t1 or t2:
-                DB.delete_users_tasks(user_id=req["user_id"], task_id=req["task_id"], position="supervisor")
-            else:
-                response["status"] = "Access denied"
-        else:
-            response["status"] = "Wrong parameters"
+            response["status"] = "Access denied"
     else:
         response["status"] = "Bad request"
     return jsonify(response)
@@ -504,8 +484,8 @@ def task_delete_comment():
     response = dict()
     if "comment_id" in req:
         comment = DB.get_comment(comment_id=req["comment_id"])
-        if comment and comment[4] == ID:
-            DB.delete_comment(req["comment_id"])
+        if comment and comment["author_id"] == ID:
+            DB.delete_comment(**req)
         else:
             response["status"] = "Access denied"
     else:
@@ -520,30 +500,14 @@ def delete_board():
     req = request.json
     response = dict()
     if "board_id" in req:
-        board = DB.get_board(board_id=req["board_id"])
-        if board:
-            board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=req["board_id"])
-            user_test = False
-            for us_bo in board_user:
-                if us_bo[2] == "admin":
-                    user_test = True
-            board_user.sort(key=lambda x: x[2])
-            if user_test:
-                DB.delete_users_boards(board_id=req["board_id"])
-                DB.delete_board(board_id=req["board_id"])
-                board_tasks = DB.get_tasks_by_board(board_id=req["board_id"])
-                if board_tasks:
-                    for task in board_tasks:
-                        DB.delete_users_tasks(task_id=task[0])
-                        DB.delete_task(task[0])
-                        task_comments = DB.get_comments(task_id=task[0])
-                        if task_comments:
-                            for comment in task_comments:
-                                DB.delete_comment(comment[0])
-            else:
-                response["status"] = "Access denied"
+        board_user = DB.get_user_board(user_id=ID, board_id=req["board_id"], user_position="admin")
+        if board_user:
+            DB.delete_users_boards(board_id=req["board_id"])
+            DB.delete_board(board_id=req["board_id"])
+            DB.delete_comment(board_id=req["board_id"])
+            DB.delete_task(board_id=req["board_id"])
         else:
-            response["status"] = "Board does not exist"
+            response["status"] = "Access denied"
     else:
         response["status"] = "Bad request"
     return jsonify(response)
@@ -557,26 +521,11 @@ def delete_task():
     response = dict()
 
     if "task_id" in req:
-        task = DB.get_task(task_id=req["task_id"])
-        if task:
-            board_id = task[2]
-            board_user = DB.get_users_boards_by_user_board(user_id=ID, board_id=board_id)
-            task_user = DB.get_users_tasks(task_id=req["task_id"], user_id=ID)
-            if board_user and task_user:
-                board_user.sort(key=lambda x:x[2])
-                task_user.sort(key=lambda x:x[2])
-                if board_user[0][2] == "admin" or task_user[0][2] == "author":
-                    task_comments = DB.get_comments(task_id=req["task_id"])
-                    DB.delete_users_tasks(task_id=req["task_id"])
-                    DB.delete_task(req["task_id"])
-                    for comment in task_comments:
-                        DB.delete_comment(comment[0])
-                else:
-                    response["status"] = "Access denied"
-            else:
-                response["status"] = "Wrong task"
+        task_user = DB.get_user_task(user_id=ID, task_id=req["task_id"], user_position="author")
+        if task_user:
+            DB.delete_task(task_id=req["task_id"])
         else:
-            response["status"] = "Wrong task"
+            response["status"] = "Access denied"
     else:
         response["status"] = "Bad request"
 

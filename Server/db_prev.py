@@ -65,14 +65,13 @@ class MainDB:
         return b_id
 
     def insert_users_boards(self, user_id, board_id, user_position=None):
-        if self.get_user(ID=user_id):
-            cursor = self.cursor()
-            cursor.execute(
-                """INSERT INTO users_boards (user_id, board_id, user_position) VALUES (%s, %s, %s)""",
-                (user_id, board_id, user_position,)
-            )
-            self.conn.commit()
-            cursor.close()
+        cursor = self.cursor()
+        cursor.execute(
+            """INSERT INTO users_boards (user_id, board_id, user_position) VALUES (%s, %s, %s)""",
+            (user_id, board_id, user_position,)
+        )
+        self.conn.commit()
+        cursor.close()
 
     def get_boards_by_user(self, user_id):
         cursor = self.cursor()

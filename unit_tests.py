@@ -90,7 +90,7 @@ def test_add_board():
                 "users": [],
                 "deadline": None
             },
-        "address": "/add_board",
+        "address": "/add/board",
         "method": "POST",
         "headers":
             {
@@ -155,7 +155,7 @@ def test_add_task():
                 "supervisor": "1",
                 "performers": "1"
             },
-        "address": "/add_task",
+        "address": "/add/task",
         "method": "POST",
         "headers":
             {

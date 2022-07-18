@@ -305,3 +305,5 @@ x = None
 y = 1
 if x and y:
     print(123)
+x=eval("1==1")
+print(x)
