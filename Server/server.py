@@ -66,7 +66,7 @@ def logout():
 def registration():
     req = request.json
     response = dict()
-    if not ({"password", "password_confirm", "phone"} - req.keys()):
+    if "password" in req and "password_confirm" in req and "phone" in req:
         user = DB.get_user(phone_number=str(req['phone']))
         if user is None:
             if req["password"] == req["password_confirm"]:
@@ -92,7 +92,7 @@ def profile_info():
     response = dict()
     if user:
         USER = {
-            "id": ID,
+            "user_id": ID,
             "name": user[1],
             "phone_number": user[2],
             "email": user[4],
@@ -114,7 +114,7 @@ def user_info():
         user = DB.get_user(user_id=req["user_id"])
         if user:
             USER = {
-                "id": ID,
+                "user_id": ID,
                 "name": user[1]
             }
             response["user"] = USER
@@ -318,7 +318,6 @@ def board_edit():
         boards_user = DB.get_users_boards(user_id=ID, board_id=req["board_id"], user_position="admin")
         if boards_user:
             DB.update_board(**req)
-            response["status"] = "Access denied"
         else:
             response["status"] = "Access denied"
     else:
@@ -384,6 +383,7 @@ def task_add_comment():
             if user_board:
                 req["author_id"] = ID
                 req["date_time"] = datetime.now()
+                req["board_id"] = board_id
                 DB.insert_comment(**req)
             else:
                 response["status"] = "Access denied"

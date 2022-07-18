@@ -85,281 +85,303 @@ Just run `server.py`
 **[/login](#login)**<br>
 **[/profile/info](#profileinfo)**<br>
 **[/profile/boards](#profileboards)**<br>
+**[/user/info](#userinfo)**<br>
 **[/profile/edit](#profileedit)**<br>
-**[/add/board](#addboard)**<br>
-**[/add/task](#addtask)**<br>
 **[/board/info](#boardinfo)**<br>
+**[/add/board](#addboard)**<br>
 **[/board/edit](#boardedit)**<br>
+**[/delete/board](#deleteboard)**<br>
+**[/board/add/user](#boardadduser)**<br>
 **[/task/info](#taskinfo)**<br>
+**[/add/task](#addtask)**<br>
 **[/task/edit](#taskedit)**<br>
 **[/task/add/comment](#taskaddcomment)**<br>
-**[/task/delete/performer](#taskdeleteperformer)**<br>
-**[/task/delete/supervisor](#taskdeletesupervisor)**<br>
 **[/task/delete/comment](#taskdeletecomment)**<br>
-**[/delete/board](#deleteboard)**<br>
 **[/delete/task](#deletetask)**<br>
-**[/user/info](#userinfo)**<br>
+**[/task/add/user](#taskadduser)**<br>
 ## Requests ans responses
-### /registration
-**Method**: POST
 
-**Receives**:
+### /registration
+_Use it in registration_<br>
+**Method:** POST
+
+**Receives:**
  - phone_number
  - password
  - password_confirm
 
-**Responses**:
+**Responses:**
  - access_token
 
 ### /login
-**Method**: POST
+_Use it in login_<br>
+**Method:** POST
 
-**Recieves**:
+**Receives:**
  - phone_number
  - password
- - password_confirm
 
-**Responses**
+**Responses:**
  - access_token
 
 ### /profile/info
-**Method**: GET
+_Use it find out info about user_<br>
+**Method:** GET
 
-**Receives**
+**Receives:**
  - access_token
 
-**Responses**
+**Responses:**
  - access_token
- - user_info
-   - id
+ - user_id
+ - name
+ - phone_number
+ - email
+ - telegram_id
+
+### /user/info
+_Use it to find out info about some user_<br>
+**Method:** GET
+
+**Receives:**
+ - access_token
+
+**Responses:**
+ - access_token
+ - user_id
+ - name
+ 
+### /profile/edit
+_Use it to edit user profile_<br>
+**Method:** POST
+
+**Receives:**
+ - access_token
+ - changes
    - name
    - phone_number
+   - password
    - email
    - telegram_id
- 
-### /profile/boards
+ - old_password
 
-**Method**: GET
-
-**Receives**
+**Responses:**
  - access_token
 
-**Responses**
+### /profile/boards
+_Use it to find out user boards_<br>
+**Method:** GET
+
+**Receives:**
+ - access_token
+
+**Responses:**
+ - access_token
+ - boards
+   - board_id
+     - board_id
+     - name
+     - deadline
+     - color
+     - description
+
+
+
+
+
+### /board/info
+_Use it to find out board info_<br>
+**Method:** GET
+
+**Receives:**
  - access_token
  - board_id
+
+**Responses:**
+ - access_token
+ - board
+   - board_id
    - name
    - deadline
    - color
    - description
-
-### /profile/edit
-
-**Method**: POST
-
-**Receives**
- - access_token
- - old_password
- - new_name
- - new_phone
- - new_password
- - new_email
- - new_telegram
-
-**Responses**
- - access_token
-
+   - tasks
+     - task_id
+       - name
+       - deadline
+       - description
+       - authors
+         - user_id
+           - user_id
+           - name
+       - performers
+         - user_id
+           - user_id
+           - name
+       - supervisors
+         - user_id
+           - user_id
+           - name
+ 
 ### /add/board
+_Use it to add new board_<br>
+**Method:** POST
 
-**Method**: POST
-
-**Receives**
+**Receives:**
  - access_token
  - name
  - deadline
  - color
  - description
 
-**Responses**
+**Responses:**
  - access_token
 
+### /board/edit
+_Use it to edit board_<br>
+**Method:** POST
+
+**Receives:**
+ - access_token
+ - name
+ - deadline
+ - color
+ - description
+
+**Responses:**
+ - access_token
+
+### /delete/board
+_Use it to delete board_<br>
+**Method:** POST
+
+**Receives:**
+ - access_token
+ - board_id
+
+**Responses:**
+ - access_token
+
+### /board/add/user
+_Use it to add new user on board_<br>
+**Method:** POST
+
+**Receives:**
+ - access_token
+ - board_id
+ - user_id
+ - user_position
+
+**Responses:**
+ - access_token
+
+### /task/info
+_Use it to find out info about task_<br>
+**Method:** GET
+
+**Receives:**
+ - access_token
+ - task_id
+
+**Responses:**
+ - access_token
+ - name
+ - deadline
+ - description
+ - authors
+   - user_id
+     - user_id
+     - name
+ - performers
+   - user_id
+     - user_id
+     - name
+ - supervisors
+   - user_id
+     - user_id
+     - name
+ - comments
+   - comment_id
+     - comment_id
+     - task_id
+     - content
+     - date_time
+     - author_id
+     - board_id
+   
 ### /add/task
+_Use it to add new task_<br>
+**Method:** POST
 
-**Method**: POST
-
-**Receives**
+**Receives:**
  - access_token
  - name
  - board_id
  - description
  - deadline
+ - stage
 
-**Responses**
+**Responses:**
  - access_token
-
-### /board/info
-
-**Method**: GET
-
-**Receives**
- - access_token
- - board_id
-
-**Responses**
- - access_token
- - board
-   - name
-   - deadline
-   - color
-   - description
-   - users
-     - user_id
-       - position
-   - tasks
-     - task_id
-       - name
-       - deadline
-       - stage
-       - description
-       - author
-       - performer
-       - supervisor
-
-### /board/edit
-
-**Method**: POST
-
-**Receives**
- - access_token
- - board_id
- - new_name
- - new_color
- - new_deadline
- - new_description
- - new_user_id
- - new_user_position
- - delete_user
-
-**Responses**
- - access_token
-
-### /task/info
-
-**Method**: GET
-
-**Receives**
- - access_token
- - task_id
-
-**Responses**
- - access_token
- - task
-   - name
-   - board_id
-   - description
-   - deadline
-   - stage
-   - authors
-   - performers
-   - comments
-     - comment_id
-       - author
-       - content
 
 ### /task/edit
+_Use it to edit task_<br>
+**Method:** POST
 
-**Method**: POST
-
-**Receives**
+**Receives:**
  - access_token
- - task_id
- - new_name
- - new_deadline
- - new_performer
- - new_supervisor
- - new_description
- - new_stage
+ - name
+ - description
+ - deadline
+ - stage
 
-**Responses**
+**Responses:**
  - access_token
 
 ### /task/add/comment
+_Use it to add task new comment_<br>
+**Method:** POST
 
-**Method**: POST
-
-**Receives**
+**Receives:**
  - access_token
  - task_id
  - content
 
-**Responses**
- - access_token
-
-### /task/delete/performer
-
-**Method**: POST
-
-**Receives**
- - access_token
- - task_id
- - user_id
-
-**Responses**
- - access_token
-
-### /task/delete/supervisor
-
-**Method**: POST
-
-**Receives**
- - access_token
- - task_id
- - user_id
-
-**Responses**
+**Responses:**
  - access_token
 
 ### /task/delete/comment
+_Use it to delete task comment_<br>
+**Method:** POST
 
-**Method**: POST
-
-**Receives**
+**Receives:**
  - access_token
  - comment_id
 
-**Responses**
- - access_token
-
-### /delete/board
-
-**Method**: POST
-
-**Receives**
- - access_token
- - board_id
-
-**Responses**
+**Responses:**
  - access_token
 
 ### /delete/task
+_Use it to delete task_<br>
+**Method:** POST
 
-**Method**: POST
-
-**Receives**
+**Receives:**
  - access_token
  - task_id
 
-**Responses**
+**Responses:**
  - access_token
 
-### /user/info
+### /task/add/user
+_Use it to add new author/performer/supervisor for the task_<br>
+**Method:**
 
-**Method**: GET
-
-**Receives**
+**Receives:**
  - access_token
+ - task_id
  - user_id
+ - user_position
 
-**Responses**
- - user_info
-   - id
-   - name
+**Responses:**
+ - access_token
+
