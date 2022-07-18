@@ -345,6 +345,23 @@ def board_add_user():
 
     return jsonify(response)
 
+@app.route('/board/delete/user', methods=["POST"])
+@jwt_required()
+def board_delete_user():
+    ID = get_jwt_identity()
+    req = request.json
+    response = dict()
+    if "position" in req and "user_id" in req and "board_id" in req:
+        board = DB.get_board(board_id=req["board_id"])
+        board_user = DB.get_user_board(board_id=board["board_id"], user_id=ID, user_position="admin")
+        if board and board_user:
+            DB.delete_users_tasks(**req)
+        else:
+            response["status"] = "Access denied"
+    else:
+        response["status"] = "Bad request"
+    return jsonify(response)
+
 @app.route('/task/edit', methods=["POST"])
 @jwt_required()
 def task_edit():
@@ -432,7 +449,7 @@ def profile_edit():
     req = request.json
     response = dict()
     if "changes" in req and "old_password" in req and isinstance(req["changes"], dict):
-        user = DB.get_user(ID=ID)
+        user = DB.get_user(user_id=int(ID))
         if user is not None:
             old_password_hash = user["password"]
             hash_check = hashing_password(password=req["old_password"], phone=user["phone_number"])
@@ -446,7 +463,11 @@ def profile_edit():
                     else:
                         req["changes"]["password"] = hashing_password(password=req["old_password"],
                                                                       phone=req["changes"]["phone_number"])
-                DB.update_user(**req["changes"])
+                wh = {
+                    "user_id": ID
+                }
+                val = req["changes"]
+                DB.update_user(where_=wh, values_=val)
             else:
                 response["status"] = "Wrong password"
         else:
@@ -458,7 +479,7 @@ def profile_edit():
 
 @app.route('/task/delete/user', methods=["POST"])
 @jwt_required()
-def task_delete_performer():
+def task_delete_user():
     ID = get_jwt_identity()
     req = request.json
     response = dict()

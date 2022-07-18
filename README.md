@@ -92,6 +92,7 @@ Just run `server.py`
 **[/board/edit](#boardedit)**<br>
 **[/delete/board](#deleteboard)**<br>
 **[/board/add/user](#boardadduser)**<br>
+**[/board/delete/user](#boarddeleteuser)**<br>
 **[/task/info](#taskinfo)**<br>
 **[/add/task](#addtask)**<br>
 **[/task/edit](#taskedit)**<br>
@@ -275,6 +276,18 @@ _Use it to add new user on board_<br>
 **Responses:**
  - access_token
 
+### /board/delete/user
+_Use it to delete user from board_<br>
+**Method:** POST
+
+**Receives:**
+ - access_token
+ - board_id
+ - user_id
+
+**Responses:**
+ - access_token
+
 ### /task/info
 _Use it to find out info about task_<br>
 **Method:** GET
@@ -374,7 +387,7 @@ _Use it to delete task_<br>
 
 ### /task/add/user
 _Use it to add new author/performer/supervisor for the task_<br>
-**Method:**
+**Method:** POST
 
 **Receives:**
  - access_token
@@ -385,3 +398,14 @@ _Use it to add new author/performer/supervisor for the task_<br>
 **Responses:**
  - access_token
 
+### /task/delete/user
+_Use it to delete user from task_<br>
+**Method:** POST
+
+**Receives:**
+ - access_token
+ - task_id
+ - user_id
+
+**Responses:**
+ - access_token
