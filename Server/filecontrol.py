@@ -24,11 +24,31 @@ class FileControl:
             secure=MinioConfig.secure
         )
 
-    def upload_file(self, bucket, filename, file):
-        pass
+    def upload_file(self, file, filename, filesize):
+        try:
+            self.client.put_object(bucket_name='files', object_name=filename,
+                                   data=file, length=filesize)
+            return True
+        except InvalidResponseError as err:
+            print(err)
 
     def get_file(self, filename):
-        x = self.client.get_object(bucket_name="files", object_name=filename)
-        x.close()
-        x.release_conn()
-        return x.data
+        try:
+            x = self.client.get_object(bucket_name="files", object_name=filename)
+            data = x.data
+            x.close()
+            x.release_conn()
+            return data
+        except Exception as e:
+            print(e)
+
+    def delete_file(self, filename):
+        try:
+            self.client.remove_object(bucket_name='files', object_name=filename)
+        except Exception as e:
+            print(e)
+# #
+# FC = FileControl()
+# data = open("tests.py", "rb")
+# size = os.stat("tests.py").st_size
+# FC.upload_file(data, "file.py", size)

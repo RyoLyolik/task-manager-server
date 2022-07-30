@@ -3,6 +3,7 @@ from datetime import timedelta
 
 class FlaskConfig:
     secret_key = "KEY"
+    MAX_CONTENT_LENGTH = 1024*1024*64
     DEBUG = True
 
 

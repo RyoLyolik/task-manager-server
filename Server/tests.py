@@ -301,9 +301,25 @@
 #
 # if __name__ == "__main__":
 #     main()
-x = None
-y = 1
-if x and y:
-    print(123)
-x=eval("1==1")
-print(x)
+
+# import requests
+# import os
+# x = os.stat("filecontrol.py")
+# data = open("filecontrol.py", "rb")
+# print(x.st_size)
+#
+# # req = requests.post("http://localhost:8010/task/add/file", data={"task_id": 5}, files={"file": data})
+# req = requests.request("POST","http://localhost:8010/task/add/file", data={"task_id": 5}, files={"file": data})
+# # req = requests.Request("POST","http://localhost:8010/task/add/file", data={"task_id": 5}, files={"file": data}).prepare().body.decode("utf-8")
+# data.close()
+# print(req)
+
+from models import model
+from sqlalchemy.orm import relationship, mapper
+
+
+x = {"age__gte": 18}
+class U:
+    def __init__(self):
+        self.w = 2
+

@@ -1,14 +1,7 @@
-import sqlalchemy
-from sqlalchemy import event
 from sqlalchemy import insert, select, update, delete
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
 from models import model
-import pandas as pd
 from config import DataBaseConfig
-import re
-from sqlalchemy.exc import *
 from sqlalchemy.sql.elements import *
 
 
@@ -27,7 +20,6 @@ class MainDB:
             query = insert(model.users_table).values(**kwargs).returning(model.users_table.c.user_id)
             insertion = self.conn.execute(query)
             transaction.commit()
-
             user_id = insertion.first()
             return user_id
         except Exception as e:
@@ -99,6 +91,19 @@ class MainDB:
 
             comment = insertion.first()
             return comment
+        except Exception as e:
+            print(e)
+            transaction.rollback()
+
+    def insert_file(self, **kwargs):
+        transaction = self.conn.begin()
+        try:
+            query = insert(model.files).values(**kwargs).returning(model.files.c.file_id)
+            insertion = self.conn.execute(query)
+            transaction.commit()
+
+            file_id = insertion.first()
+            return file_id
         except Exception as e:
             print(e)
             transaction.rollback()
@@ -247,6 +252,18 @@ class MainDB:
         except AttributeError as e:
             print(e)
 
+    def get_file(self, **kwargs):
+        conditions = list()
+        try:
+            for attr in kwargs:
+                conditions.append(getattr(model.files.c, attr) == kwargs[attr])
+            query = select(model.files).where(and_(*conditions))
+            selection = self.conn.execute(query)
+            file = selection.first()
+            return file
+        except AttributeError as e:
+            print(e)
+
     def update_user(self, where_: dict, values_: dict):
         conditions = list()
         transaction = self.conn.begin()
@@ -350,4 +367,3 @@ class MainDB:
         except Exception as e:
             print(e)
             transaction.rollback()
-

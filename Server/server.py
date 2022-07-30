@@ -6,13 +6,17 @@ from datetime import datetime, timedelta, timezone
 import db
 from ADDITIONAL import hashing_password
 from config import *
+from filecontrol import FileControl
+import os
 
 DB = db.MainDB()
+FC = FileControl()
 app = Flask(__name__)
 app.secret_key = FlaskConfig.secret_key
 JWT = JWTManager(app)
 cors = CORS(
-    app
+    app,
+    supports_credentials=True  # <- maybe delete this later
 )
 
 
@@ -38,21 +42,24 @@ def refresh_expiring_jwts(response):
 def login():
     req = request.json
     response = dict()
-    if "phone" in req and "password" in req:
-        user = DB.get_user(phone_number=req['phone'])
+    code = 200
+    if "phone_number" in req and "password" in req:
+        user = DB.get_user(phone_number=req['phone_number'])
         if user is not None:
-            password_verification = hashing_password(password=req["password"], phone=req["phone"]) == user[3]
+            password_verification = hashing_password(password=req["password"], phone=req["phone_number"]) == user[3]
             if password_verification:
                 access_token = create_access_token(identity=user[0])
                 response["access_token"] = access_token
             else:
                 response["status"] = "Wrong password"
+                code = 403
         else:
             response["status"] = "User does not exist"
+            code = 403
     else:
         response["status"] = "Bad request"
-
-    return jsonify(response), 201
+        code = 400
+    return jsonify(response), code
 
 
 @app.route('/logout')
@@ -66,12 +73,12 @@ def logout():
 def registration():
     req = request.json
     response = dict()
-    if "password" in req and "password_confirm" in req and "phone" in req:
+    if "password" in req and "password_confirm" in req and "phone_number" in req:
         user = DB.get_user(phone_number=str(req['phone']))
         if user is None:
             if req["password"] == req["password_confirm"]:
-                password_hash = hashing_password(password=req["password"], phone=str(req["phone"]))
-                user_id = DB.insert_user(phone_number=str(req["phone"]), password=password_hash)
+                password_hash = hashing_password(password=req["password"], phone=str(req["phone_number"]))
+                user_id = DB.insert_user(phone_number=str(req["phone_number"]), password=password_hash)
                 access_token = create_access_token(identity=user_id)
                 response["access_token"] = access_token
             else:
@@ -130,13 +137,14 @@ def user_info():
 def profile_boards():
     ID = get_jwt_identity()
     response = dict()
-    boards_ids = DB.get_boards(user_id=ID)
+    boards_ids = DB.get_users_boards(user_id=ID)
     if boards_ids:
-        BOARDS = dict()
-        for b_id in boards_ids:
+        BOARDS = list()
+        for board in boards_ids:
+            b_id = board["board_id"]
             board = DB.get_board(board_id=b_id)
             if board:
-                BOARDS[b_id] = dict(board)
+                BOARDS.append(dict(board))
         response["boards"] = BOARDS
     else:
         response["status"] = "User has no boards"
@@ -324,6 +332,7 @@ def board_edit():
         response["status"] = "Bad request"
     return jsonify(response)
 
+
 @app.route('/board/add/user', methods=["POST"])
 @jwt_required()
 def board_add_user():
@@ -345,6 +354,7 @@ def board_add_user():
 
     return jsonify(response)
 
+
 @app.route('/board/delete/user', methods=["POST"])
 @jwt_required()
 def board_delete_user():
@@ -361,6 +371,7 @@ def board_delete_user():
     else:
         response["status"] = "Bad request"
     return jsonify(response)
+
 
 @app.route('/task/edit', methods=["POST"])
 @jwt_required()
@@ -434,12 +445,83 @@ def task_add_user():
 
     return jsonify(response)
 
+
 @app.route('/task/add/file', methods=["POST"])
 @jwt_required()
 def task_add_file():
-    return jsonify(
-        {"status": "Я тут ничего не сделал :/"}
-    ), 404
+    ID = get_jwt_identity()
+    files = request.files
+    req = request.values
+    response = dict()
+    if "task_id" in req:
+        task_id = int(req["task_id"])
+        board_id = DB.get_task(task_id=task_id)["board_id"]
+        user_board = DB.get_user_board(user_id=ID,board_id=board_id)
+        if user_board:
+            if "file" in files:
+                file = files["file"]
+                filename = file.filename
+                f_id = DB.insert_file(task_id=task_id, filename=filename, author_id=ID)["file_id"]
+                filetype = filename.split('.')[-1]
+                filename = str(f_id) + '.' + filetype
+
+                file.save(filename)
+                file.close()
+
+                file = open(filename, "rb")
+                file_stat = os.stat(filename)
+                filesize = file_stat.st_size
+
+                uploading = FC.upload_file(file=file, filename=filename, filesize=filesize)
+                file.close()
+                os.remove(filename)
+                if f_id and uploading:
+                    response["status"] = 201
+                else:
+                    response["status"] = "Smth went wrong"
+                    code = 400
+            else:
+                response["status"] = "Access denied"
+        else:
+            response["status"] = "Request has no file"
+    else:
+        response["status"] = "Bad request"
+    return jsonify(response)
+
+
+@app.route('/task/get/file', methods=["GET"])
+@jwt_required()
+def task_delete_file():
+    ID = get_jwt_identity()
+    req = request.json
+    response = dict()
+    if "file_id" in req:
+        file = DB.get_file(file_id=req["file_id"])
+        task = DB.get_task(task_id=file["task_id"])
+        board = DB.get_board(board_id=task["board_id"])
+        board_user = DB.get_user_board(board_id=board["board_id"], user_id=ID)
+        if board_user:
+            file_type = file["filename"].split(".")
+            if len(file_type)>=2:
+                filename = str(req["file_id"]) + "." + file_type[-1]
+                file_data = FC.get_file(filename=filename)
+                print(file_data)
+                if file_data:
+                    response["status"] = "ok"
+                    return send_file(file_data, attachment_filename=filename)
+                else:
+                    response["status"] = "Bad file"
+                    code = 400
+            else:
+                response["status"] = "Bad file type"
+                code = 400
+        else:
+            response["status"] = "Access denied"
+            code = 400
+    else:
+        response["status"] = "Bad request"
+        code = 400
+    return jsonify(response),code
 
 
 @app.route('/profile/edit', methods=["POST"])
