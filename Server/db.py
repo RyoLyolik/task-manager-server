@@ -103,6 +103,32 @@ class MainDB:
             print(e)
             transaction.rollback()
 
+    def insert_file(self, **kwargs):
+        transaction = self.conn.begin()
+        try:
+            query = insert(model.files).values(**kwargs).returning(model.files.c.file_id)
+            insertion = self.conn.execute(query)
+            transaction.commit()
+
+            file_id = insertion.first()
+            return file_id
+        except Exception as e:
+            print(e)
+            transaction.rollback()
+
+    def insert_delete(self, **kwargs):
+        transaction = self.conn.begin()
+        try:
+            query = insert(model.delete_table).values(**kwargs).returning(model.delete_table.c.task_id)
+            insertion = self.conn.execute(query)
+            transaction.commit()
+
+            task_id = insertion.first()
+            return task_id
+        except Exception as e:
+            print(e)
+            transaction.rollback()
+
     def get_user(self, **kwargs):
         conditions = list()
         try:
@@ -242,8 +268,58 @@ class MainDB:
                 conditions.append(getattr(model.tasks_table.c, attr) == kwargs[attr])
             query = select(model.tasks_table).where(and_(*conditions))
             selection = self.conn.execute(query)
-            user = selection.fetchall()
-            return user
+            tasks = selection.fetchall()
+            return tasks
+        except AttributeError as e:
+            print(e)
+
+    def get_tasks_by_deadline_user_id(self, deadline=None, user_id=None):
+        conditions = list()
+        try:
+            if deadline:
+                conditions.append(getattr(model.tasks_table.c, "deadline") <= deadline)
+            if user_id:
+                conditions.append(getattr(model.tasks_table.c, "user_id") == user_id)
+            query = select(model.tasks_table).where(and_(*conditions))
+            selection = self.conn.execute(query)
+            tasks = selection.fetchall()
+            return tasks
+        except AttributeError as e:
+            print(e)
+
+    def get_file(self, **kwargs):
+        conditions = list()
+        try:
+            for attr in kwargs:
+                conditions.append(getattr(model.files.c, attr) == kwargs[attr])
+            query = select(model.files).where(and_(*conditions))
+            selection = self.conn.execute(query)
+            file = selection.first()
+            return file
+        except AttributeError as e:
+            print(e)
+
+    def get_files(self, **kwargs):
+        conditions = list()
+        try:
+            for attr in kwargs:
+                conditions.append(getattr(model.files.c, attr) == kwargs[attr])
+            query = select(model.files).where(and_(*conditions))
+            selection = self.conn.execute(query)
+            file = selection.fetchall()
+            return file
+        except AttributeError as e:
+            print(e)
+
+    def get_delete(self, **kwargs):
+        conditions = list()
+        try:
+            for attr in kwargs:
+                conditions.append(getattr(model.delete_table.c, attr) == kwargs[attr])
+            query = select(model.delete_table).where(and_(*conditions))
+            selection = self.conn.execute(query)
+            file = selection.fetchall()
+            return file
         except AttributeError as e:
             print(e)
 
@@ -351,3 +427,28 @@ class MainDB:
             print(e)
             transaction.rollback()
 
+    def delete_file(self, **kwargs):
+        conditions = list()
+        transaction = self.conn.begin()
+        try:
+            for attr in kwargs:
+                conditions.append(getattr(model.files.c, attr) == kwargs[attr])
+            query = delete(model.tasks_table).where(and_(conditions))
+            self.conn.execute(query)
+            transaction.commit()
+        except Exception as e:
+            print(e)
+            transaction.rollback()
+
+    def delete_delete(self, **kwargs):
+        conditions = list()
+        transaction = self.conn.begin()
+        try:
+            for attr in kwargs:
+                conditions.append(getattr(model.delete_table.c, attr) == kwargs[attr])
+            query = delete(model.delete_table).where(and_(conditions))
+            self.conn.execute(query)
+            transaction.commit()
+        except Exception as e:
+            print(e)
+            transaction.rollback()
