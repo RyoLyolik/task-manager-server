@@ -100,6 +100,11 @@ Just run `server.py`
 **[/task/delete/comment](#taskdeletecomment)**<br>
 **[/delete/task](#deletetask)**<br>
 **[/task/add/user](#taskadduser)**<br>
+**[/task/add/file](#taskaddfile)**<br>
+**[/task/get/file](#taskgetfile)**<br>
+**[/task/delete/file](#taskdeletefile)**<br>
+**[/trashcan/add/task](#trashcanaddtask)**<br>
+**[/trashcan/delete/task](#trashcandeletetask)**<br>
 ## Requests ans responses
 
 ### /registration
@@ -321,6 +326,12 @@ _Use it to find out info about task_<br>
      - date_time
      - author_id
      - board_id
+ - files
+   - file_id
+     - file_id
+     - task_id
+     - filename
+     - author_id
    
 ### /add/task
 _Use it to add new task_<br>
@@ -409,3 +420,90 @@ _Use it to delete user from task_<br>
 
 **Responses:**
  - access_token
+
+### /task/add/file
+_Use it to add file in task_<br>
+**Method:** POST
+
+**Receives:**
+ - access_token
+
+ - values:
+   - file
+   - task_id
+
+**Responses:**
+ - access_token
+
+
+### /task/get/file
+_Use it to get file from task_<br>
+**Method:** GET
+
+**Receives:**
+ - access_token
+ - file_id
+
+**Responses:**
+ - access_token
+ - file
+
+### /trashcan/add/task
+_Use it to put task in trashcan_<br>
+**Method:** POST
+
+**Receives:**
+ - access_token
+ - task_id
+
+**Responses:**
+ - access_token
+
+### /trashcan/delete/task
+_Use it to pull out task from trashcan_<br>
+**Method:** POST
+
+**Receives:**
+ - access_token
+ - task_id
+
+**Responses:**
+ - access_token
+
+### /trashcan/get/tasks
+_Use it to get all tasks in trashcan on the board_<br>
+**Method:** GET
+
+**Receives:**
+ - access_token
+ - board_id
+
+**Responses:**
+ - access_token
+ - tasks
+   - task_id
+   - board_id
+   - deadline
+   - name
+   - description
+   - stage
+ 
+# /task/filter
+_Use it to filter tasks_<br>
+**Method:** GET
+
+**Receives:**
+ - access_token
+ - board_id
+ - deadline: OPTIONAL
+ - user_id: OPTIONAL
+
+**Responses:**
+ - access_token
+ - tasks
+   - task_id
+   - name
+   - board_id
+   - description
+   - deadline
+   - stage

@@ -460,35 +460,39 @@ def task_add_file():
     response = dict()
     if "task_id" in req:
         task_id = int(req["task_id"])
-        board_id = DB.get_task(task_id=task_id)["board_id"]
-        user_board = DB.get_user_board(user_id=ID, board_id=board_id)
-        if user_board:
-            if "file" in files:
-                file = files["file"]
-                filename = file.filename
-                f_id = DB.insert_file(task_id=task_id, filename=filename, author_id=ID)["file_id"]
-                filetype = filename.split('.')[-1]
-                filename = str(f_id) + '.' + filetype
+        board = DB.get_task(task_id=task_id)
+        if board:
+            board_id= board["board_id"]
+            user_board = DB.get_user_board(user_id=ID, board_id=board_id)
+            if user_board:
+                if "file" in files:
+                    file = files["file"]
+                    filename = file.filename
+                    f_id = DB.insert_file(task_id=task_id, filename=filename, author_id=ID)["file_id"]
+                    filetype = filename.split('.')[-1]
+                    filename = str(f_id) + '.' + filetype
 
-                file.save(filename)
-                file.close()
+                    file.save(filename)
+                    file.close()
 
-                file = open(filename, "rb")
-                file_stat = os.stat(filename)
-                filesize = file_stat.st_size
+                    file = open(filename, "rb")
+                    file_stat = os.stat(filename)
+                    filesize = file_stat.st_size
 
-                uploading = FC.upload_file(file=file, filename=filename, filesize=filesize)
-                file.close()
-                os.remove(filename)
-                if f_id and uploading:
-                    response["status"] = 201
+                    uploading = FC.upload_file(file=file, filename=filename, filesize=filesize)
+                    file.close()
+                    os.remove(filename)
+                    if f_id and uploading:
+                        response["status"] = 201
+                    else:
+                        response["status"] = "Smth went wrong"
+                        code = 400
                 else:
-                    response["status"] = "Smth went wrong"
-                    code = 400
+                    response["status"] = "Request has no file"
             else:
                 response["status"] = "Access denied"
         else:
-            response["status"] = "Request has no file"
+            response["status"] = "Bad task"
     else:
         response["status"] = "Bad request"
     return jsonify(response)
@@ -529,7 +533,7 @@ def task_delete_file():
     return jsonify(response), code
 
 
-@app.route('/task/delete/file')
+@app.route('/task/delete/file', methods=["GET"])
 @jwt_required()
 def task_delete_file():
     ID = get_jwt_identity()
@@ -688,7 +692,7 @@ def trashcan_add_task():
 
     return jsonify(response)
 
-@app.route('/trashcan/delete/task')
+@app.route('/trashcan/delete/task', methods=["POST"])
 @jwt_required()
 def trashcan_delete_task():
     ID = get_jwt_identity()
@@ -713,7 +717,7 @@ def trashcan_delete_task():
 
     return jsonify(response)
 
-@app.route('/trashcan/get/tasks')
+@app.route('/trashcan/get/tasks', methods=["GET"])
 @jwt_required()
 def trashcan_get_tasks():
     ID = get_jwt_identity()
@@ -737,14 +741,16 @@ def trashcan_get_tasks():
     return jsonify(response)
 
 
-@app.route('/task/filter')
+@app.route('/task/filter', methods=["GET"])
 @jwt_required()
 def task_filter():
     ID = get_jwt_identity()
     req = request.json
     response = dict()
 
-    if "board_id" in req:
+    if "board_id" in req or ("user_id" in req and req["user_id"] == ID):
+        if "user_id" in req:
+            req["user_id"] = ID
         response["tasks"] = list()
         tasks = DB.get_tasks_by_deadline_user_id(**req)
         if tasks:
@@ -753,7 +759,7 @@ def task_filter():
     else:
         response["status"] = "Bad request"
 
-    return response["jsonify"]
+    return jsonify(response)
 
 
 if __name__ == '__main__':
