@@ -5,9 +5,6 @@ from flask_jwt_extended import *
 from flask_cors import CORS
 from src.solution.service_layer.services import *
 from src.solution.config import *
-from src.solution.adapters.repository import *
-from src.solution.adapters.specification import *
-from src.solution.service_layer.handlers import *
 from datetime import datetime, timezone
 
 app = Flask(__name__)
@@ -332,7 +329,6 @@ def task_get_file():
     if response["status"] == "ok":
         response = send_file(io.BytesIO(response["data"]["filedata"]), download_name=response["data"]["filename"])
         response = make_response(response)
-        print(response.get_json())
     return jsonify(response)
 
 
@@ -391,3 +387,7 @@ if __name__ == '__main__':
     app.config.from_object('src.solution.config.FlaskConfig')
     runs()
     app.run(port=8010, host='127.0.0.1', debug=True)
+
+
+# Authorization: Bearer <TOKEN>
+# Content-Type: application/json

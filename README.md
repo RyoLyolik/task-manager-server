@@ -28,16 +28,24 @@ Then edit `Server\config.py`:
 
 ```python
 from datetime import timedelta
+import re
+
+
+class Config:
+    debug = True
 
 
 class FlaskConfig:
     secret_key = "KEY"
+    MAX_CONTENT_LENGTH = 1024 * 1024 * 64
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=48)
     DEBUG = True
 
 
 class JWTConfig:
     JWT_SECRET_KEY = "please-remember-to-change-me"
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=48) # session lifetime
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=48)
+    jwt_identity = "phone_number"
 
 
 class CORSConfig:
@@ -48,17 +56,39 @@ class DataBaseConfig:
     dbname = "Ivnix"
     user = "postgres"
     password = "user"
-    host = "localhost"
+    port = '5432'
+    if Config.debug:
+        host = "localhost"
+    else:
+        host = str()
+
+    @classmethod
+    def get_database_uri(cls):
+        return f"postgresql://{cls.user}:{cls.password}@{cls.host}:{cls.port}/{cls.dbname}"
 
 
 class MinioConfig:
-    host = "localhost:9000"
+    host = "localhost"
+    port = "9000"
     access_key = 'minioadmin'
     secret_key = 'minioadmin'
-    secure = False
+    main_bucket = "files"
+    if Config.debug:
+        secure = False
+    else:
+        secure = True
+
+    @classmethod
+    def get_minio_config(cls):
+        return {
+            "endpoint": f"{cls.host}:{cls.port}",
+            "access_key": cls.access_key,
+            "secret_key": cls.secret_key,
+            "secure": cls.secure
+        }
 ```
 ### Run
-Make sure, that previous steps completed. 
+ > Make sure, that previous steps completed. 
 
 **Run _MinIO_:**
 
@@ -81,429 +111,197 @@ Just run `server.py`
 **Default port -** `8010`<br>
 **Requests type -** raw JSON
 ## Routes:
-**[/registration](#registration)**<br>
-**[/login](#login)**<br>
-**[/profile/info](#profileinfo)**<br>
-**[/profile/boards](#profileboards)**<br>
-**[/user/info](#userinfo)**<br>
-**[/profile/edit](#profileedit)**<br>
-**[/board/info](#boardinfo)**<br>
-**[/add/board](#addboard)**<br>
-**[/board/edit](#boardedit)**<br>
-**[/delete/board](#deleteboard)**<br>
-**[/board/add/user](#boardadduser)**<br>
-**[/board/delete/user](#boarddeleteuser)**<br>
-**[/task/info](#taskinfo)**<br>
-**[/add/task](#addtask)**<br>
-**[/task/edit](#taskedit)**<br>
-**[/task/add/comment](#taskaddcomment)**<br>
-**[/task/delete/comment](#taskdeletecomment)**<br>
-**[/delete/task](#deletetask)**<br>
-**[/task/add/user](#taskadduser)**<br>
-**[/task/add/file](#taskaddfile)**<br>
-**[/task/get/file](#taskgetfile)**<br>
-**[/task/delete/file](#taskdeletefile)**<br>
-**[/trashcan/add/task](#trashcanaddtask)**<br>
-**[/trashcan/delete/task](#trashcandeletetask)**<br>
+**[User requests](#user-requests)**<br>
+ - **[/registration](#registration)**<br>
+ - **[/login](#login)**<br>
+ - **[/profile/info](#profileinfo)**<br>
+ - **[/user/info](#userinfo)**<br>
+ - **[/profile/edit](#profileedit)**<br>
+ - **[/profile/boards](#profileboards)**<br>
+
 ## Requests ans responses
-
+### User requests
 ### /registration
-_Use it in registration_<br>
-**Method:** POST
+**Method:** POST<br>
+**Accepts**: JSON<br>
+Received parameters:
+ - phone_number: <_str, REQUIRED_>
+ - password: <_str, REQUIRED_>
+ - password_confirm: <_str, REQUIRED_>
 
-**Receives:**
- - phone_number
- - password
- - password_confirm
-
-**Responses:**
+_Request example_:
+```json
+{
+  "phone_number": "111",
+  "password": "qwe123",
+  "password_confirm": "qwe123"
+}
+```
+**Response**: JSON<br>
+Responses:
+ - status
  - access_token
+
+_Response example_:
+```json
+{
+  "access_token": "%TOKEN%",
+  "status": "ok"
+}
+```
 
 ### /login
-_Use it in login_<br>
-**Method:** POST
+**Method:** POST<br>
+**Accepts**: JSON<br>
+Received parameters:
+ - phone_number: <_str, REQUIRED_>
+ - password: <_str, REQUIRED_>
 
-**Receives:**
- - phone_number
- - password
-
-**Responses:**
+_Request example_:
+```json
+{
+  "phone_number": "111",
+  "password": "qwe123"
+}
+```
+**Response**: JSON<br>
+Responses:
+ - status
  - access_token
+
+_Response example_:
+```json
+{
+  "access_token": "%TOKEN%",
+  "status": "ok"
+}
+```
 
 ### /profile/info
-_Use it find out info about user_<br>
-**Method:** GET
-
-**Receives:**
+**Method:** GET<br>
+**Accepts**: JSON<br>
+Received headers:
+ - Authorization: Bearer: <str, REQUIRED>
+ 
+**Response**: JSON<br>
+Responses:
  - access_token
+ - data
+ - status
 
-**Responses:**
- - access_token
- - user_id
- - name
- - phone_number
- - email
- - telegram_id
+_Response example_:
+```json
+{
+    "access_token": "%TOKEN%",
+    "data": {
+        "profile": {
+            "email": "new_email@mail.ru",
+            "phone_number": "111",
+            "user_id": 20,
+            "username": "New name"
+        }
+    },
+    "status": "ok"
+}
+```
 
 ### /user/info
-_Use it to find out info about some user_<br>
-**Method:** GET
-
-**Receives:**
- - access_token
-
-**Responses:**
- - access_token
+**Method:** GET<br>
+**Accepts**: JSON<br>
+Received parameters:
  - user_id
- - name
- 
+
+Received headers:
+ - Authorization: Bearer: <str, REQUIRED>
+
+_Request example_:
+```json
+{
+  "user_id": 21
+}
+```
+**Response**: JSON<br>
+Responses:
+ - access_token
+
+_Response example_:
+```json
+{
+    "access_token": "%TOKEN%",
+    "data": {
+        "user": {
+            "user_id": 21,
+            "username": null
+        }
+    },
+    "status": "ok"
+}
+```
+
 ### /profile/edit
-_Use it to edit user profile_<br>
-**Method:** POST
+**Method:** POST<br>
+**Accepts**: JSON<br>
+Received parameters:
+ - old_password: <str, REQUIRED>
+ - changes: <str, REQUIRED>
+   - username: <str, OPTIONAL>
+   - phone_number: <str, OPTIONAL>
+   - email: <str, OPTIONAL>
+   - telegram_id: <str, OPTIONAL>
+   - password: <str, OPTIONAL>
 
-**Receives:**
+_Request example_:
+```json
+{
+    "changes":
+    {
+        "username":"New name",
+        "email": "new_email@mail.ru"
+    },
+    "old_password": "111"
+}
+```
+**Response**: JSON<br>
+Responses:
  - access_token
- - changes
-   - name
-   - phone_number
-   - password
-   - email
-   - telegram_id
- - old_password
+ - status
 
-**Responses:**
- - access_token
+_Response example_:
+```json
+{
+  "access_token": "%TOKEN%",
+  "status": "ok"
+}
+```
 
 ### /profile/boards
-_Use it to find out user boards_<br>
-**Method:** GET
+**Method:** GET<br>
+**Accepts**: JSON<br>
+Received headers:
+ - Authorization: Bearer: <str, REQUIRED>
 
-**Receives:**
+**Response**: JSON<br>
+Responses:
  - access_token
-
-**Responses:**
- - access_token
- - boards
-   - board_id
-     - board_id
-     - name
-     - deadline
-     - color
-     - description
-
-
-
-
-
-### /board/info
-_Use it to find out board info_<br>
-**Method:** GET
-
-**Receives:**
- - access_token
- - board_id
-
-**Responses:**
- - access_token
- - board
-   - board_id
-   - name
-   - deadline
-   - color
-   - description
-   - tasks
-     - task_id
-       - name
-       - deadline
-       - description
-       - authors
-         - user_id
-           - user_id
-           - name
-       - performers
-         - user_id
-           - user_id
-           - name
-       - supervisors
-         - user_id
-           - user_id
-           - name
- 
-### /add/board
-_Use it to add new board_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - name
- - deadline
- - color
- - description
-
-**Responses:**
- - access_token
-
-### /board/edit
-_Use it to edit board_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - name
- - deadline
- - color
- - description
-
-**Responses:**
- - access_token
-
-### /delete/board
-_Use it to delete board_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - board_id
-
-**Responses:**
- - access_token
-
-### /board/add/user
-_Use it to add new user on board_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - board_id
- - user_id
- - user_position
-
-**Responses:**
- - access_token
-
-### /board/delete/user
-_Use it to delete user from board_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - board_id
- - user_id
-
-**Responses:**
- - access_token
-
-### /task/info
-_Use it to find out info about task_<br>
-**Method:** GET
-
-**Receives:**
- - access_token
- - task_id
-
-**Responses:**
- - access_token
- - name
- - deadline
- - description
- - authors
-   - user_id
-     - user_id
-     - name
- - performers
-   - user_id
-     - user_id
-     - name
- - supervisors
-   - user_id
-     - user_id
-     - name
- - comments
-   - comment_id
-     - comment_id
-     - task_id
-     - content
-     - date_time
-     - author_id
-     - board_id
- - files
-   - file_id
-     - file_id
-     - task_id
-     - filename
-     - author_id
-   
-### /add/task
-_Use it to add new task_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - name
- - board_id
- - description
- - deadline
- - stage
-
-**Responses:**
- - access_token
-
-### /task/edit
-_Use it to edit task_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - name
- - description
- - deadline
- - stage
-
-**Responses:**
- - access_token
-
-### /task/add/comment
-_Use it to add task new comment_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - task_id
- - content
-
-**Responses:**
- - access_token
-
-### /task/delete/comment
-_Use it to delete task comment_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - comment_id
-
-**Responses:**
- - access_token
-
-### /delete/task
-_Use it to delete task_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - task_id
-
-**Responses:**
- - access_token
-
-### /task/add/user
-_Use it to add new author/performer/supervisor for the task_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - task_id
- - user_id
- - user_position
-
-**Responses:**
- - access_token
-
-### /task/delete/user
-_Use it to delete user from task_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - task_id
- - user_id
-
-**Responses:**
- - access_token
-
-### /task/add/file
-_Use it to add file in task_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
-
- - values:
-   - file
-   - task_id
-
-**Responses:**
- - access_token
-
-
-### /task/get/file
-_Use it to get file from task_<br>
-**Method:** GET
-
-**Receives:**
- - access_token
- - file_id
-
-**Responses:**
- - access_token
- - file
-
-### /trashcan/add/task
-_Use it to put task in trashcan_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - task_id
-
-**Responses:**
- - access_token
-
-### /trashcan/delete/task
-_Use it to pull out task from trashcan_<br>
-**Method:** POST
-
-**Receives:**
- - access_token
- - task_id
-
-**Responses:**
- - access_token
-
-### /trashcan/get/tasks
-_Use it to get all tasks in trashcan on the board_<br>
-**Method:** GET
-
-**Receives:**
- - access_token
- - board_id
-
-**Responses:**
- - access_token
- - tasks
-   - task_id
-   - board_id
-   - deadline
-   - name
-   - description
-   - stage
- 
-# /task/filter
-_Use it to filter tasks_<br>
-**Method:** GET
-
-**Receives:**
- - access_token
- - board_id
- - deadline: OPTIONAL
- - user_id: OPTIONAL
-
-**Responses:**
- - access_token
- - tasks
-   - task_id
-   - name
-   - board_id
-   - description
-   - deadline
-   - stage
+ - data
+ - status
+
+_Response example_:
+```json
+{
+    "access_token": "%TOKEN%",
+    "data": {
+        "boards": [
+            {
+                "board_id": 13,
+                "boardname": "New board(POSTMAN|REDESIGN)",
+                "color": "blue(IDK)",
+                "description": "This board added after porject redesign",
+                "user_id": 20,
+                "user_position": "admin"
+            }
+        ]
+    },
+    "status": "ok"
+}
+```

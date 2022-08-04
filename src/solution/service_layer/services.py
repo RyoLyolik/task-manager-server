@@ -1,39 +1,13 @@
 import datetime
 import os
-
-from sqlalchemy.orm import mapper
-from src.solution.domain.model import *
-from models import model as migration_model
-from src.solution.service_layer.unit_of_work import SqlAlchemyUnitOfWork as UoW
 from src.solution.service_layer.unit_of_work import MinioSession as FileClient
-import _sha3
 from flask.json import jsonify
-from flask_jwt_extended import create_access_token, get_jwt_identity, unset_jwt_cookies
-from src.solution.adapters.specification import *
-from src.solution.adapters.repository import *
+from flask_jwt_extended import create_access_token, unset_jwt_cookies
 from src.solution.config import JWTConfig
-
-fileclient = None
-
-
-def make_conditions(obj, operator, **kwargs):
-    condition_list = list()
-    instance = obj()
-    for attr in kwargs:
-        if attr in instance.__dict__:
-            condition_list.append(getattr(getattr(obj, attr), operator)(kwargs[attr]))
-    return condition_list
+from src.solution.service_layer.handlers import *
 
 
-def start_mappers():
-    user_mapper = mapper(User, migration_model.users_table)
-    board_mapper = mapper(Board, migration_model.board_table)
-    comment_mapper = mapper(Comment, migration_model.comments)
-    file_mapper = mapper(File_, migration_model.files)
-    task_mapper = mapper(Task, migration_model.tasks_table)
-    user_board_mapper = mapper(UserBoard, migration_model.users_boards)
-    user_task_mapper = mapper(UserTask, migration_model.users_tasks)
-    delete_mapper = mapper(Delete, migration_model.delete_table)
+
 
 
 def runs():
@@ -41,87 +15,6 @@ def runs():
     start_mappers()
     fileclient = FileClient()
 
-
-def hashing_password(password, phone):
-    hash_ = _sha3.sha3_256((str(password) + str(phone)).encode("utf-8")).hexdigest()
-    return hash_
-
-
-def get_object(obj, **kwargs):
-    req = obj(**kwargs).dict()
-
-    conditions = make_conditions(obj=obj, operator=Matches.eq, **req)
-    specification = SqlAlchemySpecification.and_specification(conditions)
-    with UoW(obj=obj) as uow:
-        row = SqlAlchemyRepository.get(obj=obj, session=uow.session, specification=specification)
-        if row:
-            answer: obj = row[obj.classname]
-        else:
-            answer = None
-
-    return answer
-
-
-def get_objects(obj, **kwargs):
-    req = obj(**kwargs).dict()
-
-    conditions = make_conditions(obj=obj, operator=Matches.eq, **req)
-    specification = SqlAlchemySpecification.and_specification(conditions)
-    with UoW(obj=obj) as uow:
-        rows = SqlAlchemyRepository.list(obj=obj, session=uow.session, specification=specification)
-        if rows:
-            answer: obj = [row[obj.classname] for row in rows]
-        else:
-            answer = None
-
-    return answer
-
-
-def create_object(obj, **kwargs):
-    instance = obj(**kwargs)
-    with UoW(obj=obj) as uow:
-        specification = SqlAlchemySpecification.values_specification(**instance.dict())
-        answer = SqlAlchemyRepository.add(obj=obj, session=uow.session, specification=specification)
-        uow.commit()
-    return answer
-
-
-def update_object(obj, previous_instance, **kwargs):
-    instance = obj(**kwargs)
-    with UoW(obj=obj) as uow:
-        specification = {
-            "where": SqlAlchemySpecification.and_specification(
-                make_conditions(obj, operator=Matches.eq, **previous_instance.dict())),
-            "values": SqlAlchemySpecification.values_specification(**instance.dict())
-        }
-        SqlAlchemyRepository.update(obj, session=uow.session, specification=specification)
-        uow.commit()
-    return True
-
-
-def delete_object(obj, **kwargs):
-    instance = obj(**kwargs)
-    with UoW(obj=obj) as uow:
-        conditions = make_conditions(obj=obj, operator=Matches.eq, **instance.dict())
-        specification = SqlAlchemySpecification.and_specification(conditions)
-        SqlAlchemyRepository.delete(obj, session=uow.session, specification=specification)
-        uow.commit()
-    return True
-
-
-def create_file(**kwargs):
-    specification = MinioSpecification.fix_kwargs(**kwargs)
-    MinioRepository.add(fileclient.get_session(), specification)
-    return True
-
-def get_file(**kwargs):
-    specification = MinioSpecification.fix_kwargs(**kwargs)
-    file_data = MinioRepository.get(fileclient.get_session(), specification)
-    return file_data
-
-def delete_file(**kwargs):
-    specification = MinioSpecification.fix_kwargs(**kwargs)
-    MinioRepository.delete(fileclient.get_session(), specification)
 
 def login_warden(**kwargs):
     if "phone_number" in kwargs and "password" in kwargs:
@@ -207,8 +100,10 @@ def user_info_warden(**kwargs):
         if user:
             user_full_info = user.dict()
             if user_full_info:
+                if "username" not in user_full_info:
+                    user_full_info["username"] = None
                 user_save_info = {
-                    "name": user_full_info["name"],
+                    "username": user_full_info["username"],
                     "user_id": user_full_info["user_id"]
                 }
                 data = dict()
@@ -514,7 +409,7 @@ def add_task_warden(**kwargs):
             user_id = user["user_id"]
             user_board = get_object(obj=UserBoard, user_id=user_id, board_id=kwargs["board_id"])
             if user_board:
-                new_task = create_object(obj=Task, author_id=user_id,**kwargs)
+                new_task = create_object(obj=Task, author_id=user_id, **kwargs)
                 create_object(obj=UserTask, task_id=new_task["task_id"], user_id=user_id, user_position="author")
                 msg["status"] = "ok"
             else:
@@ -961,7 +856,8 @@ def task_delete_file_warden(**kwargs):
             if file:
                 task = get_object(obj=Task, task_id=file["task_id"])
                 if task:
-                    user_board = get_object(obj=UserBoard, user_id=user["user_id"], board_id=task["board_id"], user_position="admin")
+                    user_board = get_object(obj=UserBoard, user_id=user["user_id"], board_id=task["board_id"],
+                                            user_position="admin")
                     file_info = get_object(obj=File_, file_id=kwargs["file_id"])
                     if file_info:
                         if user_board or file_info["author_id"] == user["user_id"]:
@@ -1020,6 +916,7 @@ def trashcan_add_task_warden(**kwargs):
 
     return msg
 
+
 def trashcan_get_tasks_warden(**kwargs):
     msg = dict()
     if JWTConfig.jwt_identity in kwargs and "board_id" in kwargs:
@@ -1061,7 +958,8 @@ def trashcan_restore_task_warden(**kwargs):
                 if user_board or task["author_id"] == user["user_id"]:
                     delete_object(obj=Delete, **task.dict())
                     create_object(obj=Task, **task.dict())
-                    create_object(obj=UserTask, task_id=kwargs["task_id"], user_id=task["author_id"], user_position="author")
+                    create_object(obj=UserTask, task_id=kwargs["task_id"], user_id=task["author_id"],
+                                  user_position="author")
                     msg["status"] = "ok"
                 else:
                     msg["status"] = "Access denied"
@@ -1073,6 +971,7 @@ def trashcan_restore_task_warden(**kwargs):
         msg["status"] = "Bad request"
 
     return msg
+
 
 def trashcan_delete_task_warden(**kwargs):
     msg = dict()

@@ -1,10 +1,6 @@
 import abc
 
-import sqlalchemy
 from sqlalchemy import insert, select, update, delete
-from sqlalchemy.sql.elements import *
-from src.solution.domain.model import *
-
 
 class AbstractRepository(abc.ABC):
     @staticmethod
