@@ -5,6 +5,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 from src.solution.config import *
 from src.solution.adapters.repository import *
+from minio import Minio
+from minio.error import InvalidResponseError
 
 DEFAULT_SESSION_FACTORY = sessionmaker(
     bind=create_engine(
@@ -12,8 +14,10 @@ DEFAULT_SESSION_FACTORY = sessionmaker(
     )
 )
 
+
 class AbstractUnitOfWork(abc.ABC):
     products: AbstractRepository
+
     def __enter__(self):
         return self
 
@@ -30,6 +34,7 @@ class AbstractUnitOfWork(abc.ABC):
     @abc.abstractmethod
     def rollback(self):
         raise NotImplementedError
+
 
 class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
     def __init__(self, session_factory=DEFAULT_SESSION_FACTORY, obj=None):
@@ -48,3 +53,18 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 
     def rollback(self):
         self.session.rollback()
+
+
+class MinioSession:
+    def __init__(self, tool=Minio, kwargs=MinioConfig.get_minio_config()):
+        self._tool = tool
+        self._kwargs = kwargs
+        self._session = self._tool(**self._kwargs)
+
+    def get_session(self):
+        return self._session
+
+    def update_session(self, tool, kwargs):
+        self._tool = tool
+        self._kwargs = kwargs
+        self._session = self._tool(**self._kwargs)

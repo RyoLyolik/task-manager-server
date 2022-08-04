@@ -9,12 +9,14 @@ class Config:
 class FlaskConfig:
     secret_key = "KEY"
     MAX_CONTENT_LENGTH = 1024 * 1024 * 64
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=48)
     DEBUG = True
 
 
 class JWTConfig:
     JWT_SECRET_KEY = "please-remember-to-change-me"
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=48)
+    jwt_identity = "phone_number"
 
 
 class CORSConfig:
@@ -41,10 +43,17 @@ class MinioConfig:
     port = "9000"
     access_key = 'minioadmin'
     secret_key = 'minioadmin'
+    main_bucket = "files"
     if Config.debug:
         secure = False
     else:
         secure = True
 
-db = DataBaseConfig()
-u = db.get_database_uri()
+    @classmethod
+    def get_minio_config(cls):
+        return {
+            "endpoint": f"{cls.host}:{cls.port}",
+            "access_key": cls.access_key,
+            "secret_key": cls.secret_key,
+            "secure": cls.secure
+        }
