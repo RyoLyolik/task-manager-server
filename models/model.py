@@ -9,8 +9,9 @@ in staff/alembic/versions folder.
 
 import sqlalchemy
 from sqlalchemy import (
-    Column, Enum, Integer, MetaData, SmallInteger, String, Table, ARRAY, Date, Time, DateTime, Boolean, ForeignKey
+    Column, Enum, Integer, MetaData, SmallInteger, String, Table, ARRAY, Date, Time, DateTime, Boolean, ForeignKey, Constraint, PrimaryKeyConstraint
 )
+
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -39,7 +40,7 @@ users_table = Table(
     'users',
     metadata,
     Column('user_id', Integer, primary_key=True, autoincrement='auto'),
-    Column('name', String(collation='ru-RU-x-icu'), unique=True),
+    Column('username', String(collation='ru-RU-x-icu'), unique=True),
     Column('phone_number', String(16), unique=True, nullable=False),
     Column('password', String(256), nullable=False),
     Column('email', String(256), unique=True),
@@ -49,7 +50,7 @@ board_table = Table(
     'board',
     metadata,
     Column('board_id', Integer, primary_key=True, autoincrement='auto'),
-    Column('name', String(length=64, collation='ru-RU-x-icu'), nullable=False),
+    Column('boardname', String(length=64, collation='ru-RU-x-icu'), nullable=False),
     Column('deadline', Date),
     Column('color', String),  # Hex value
     Column('description', String(collation='ru-RU-x-icu'), nullable=True)
@@ -59,22 +60,25 @@ tasks_table = Table(
     'tasks',
     metadata,
     Column('task_id', Integer, primary_key=True, autoincrement='auto'),
-    Column('name', String(length=64, collation='ru-RU-x-icu'), nullable=False),
+    Column('taskname', String(length=64, collation='ru-RU-x-icu'), nullable=False),
     Column('board_id', ForeignKey('board.board_id'), nullable=False),
     Column('description', String(collation='ru-RU-x-icu'), nullable=True),
     Column('deadline', Date, nullable=True),
-    Column('stage', Integer, default=False)
+    Column('stage', Integer, default=1),
+    Column('author_id', ForeignKey('users.user_id'))
 )
 
 delete_table = Table(
     "delete",
     metadata,
     Column('task_id', Integer, unique=True),
-    Column('name', String(length=64, collation='ru-RU-x-icu'), nullable=False),
+    Column('taskname', String(length=64, collation='ru-RU-x-icu'), nullable=False),
     Column('board_id', ForeignKey('board.board_id'), nullable=False),
     Column('description', String(collation='ru-RU-x-icu'), nullable=True),
     Column('deadline', Date, nullable=True),
-    Column('stage', Integer, default=False)
+    Column('stage', Integer, default=0),
+    Column('author_id', ForeignKey('users.user_id')),
+    PrimaryKeyConstraint('task_id')
 )
 
 users_tasks = Table(
@@ -82,7 +86,8 @@ users_tasks = Table(
     metadata,
     Column('user_id', ForeignKey("users.user_id")),
     Column('task_id', ForeignKey("tasks.task_id")),
-    Column('user_position', String)
+    Column('user_position', String),
+    PrimaryKeyConstraint('user_id', 'task_id')
 )
 
 users_deletedtasks = Table(
@@ -98,7 +103,8 @@ users_boards = Table(
     metadata,
     Column('user_id', ForeignKey("users.user_id")),
     Column("board_id", ForeignKey("board.board_id")),
-    Column("user_position", String, nullable=False, default="user")
+    Column("user_position", String, nullable=False, default="user"),
+    PrimaryKeyConstraint('user_id', 'board_id')
 )
 
 files = Table(
@@ -120,3 +126,4 @@ comments = Table(
     Column('author_id', ForeignKey("users.user_id")),
     Column('date_time', DateTime)
 )
+
