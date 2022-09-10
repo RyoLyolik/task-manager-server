@@ -118,8 +118,10 @@ Just run `server.py`
  - **[/user/info](#userinfo)**<br>
  - **[/profile/edit](#profileedit)**<br>
  - **[/profile/boards](#profileboards)**<br>
+**[Board requests](#board-requests)**<br>
+ - **[/add/board](#addboard)**<br>
 
-## Requests ans responses
+## Requests and responses
 ### User requests
 ### /registration
 **Method:** POST<br>
@@ -303,5 +305,136 @@ _Response example_:
         ]
     },
     "status": "ok"
+}
+```
+
+### Board requests
+### /add/board
+**Method:** POST<br>
+**Accepts**: JSON<br>
+Received headers:
+ - Authorization: Bearer: <str, REQUIRED>
+
+Received parameters:
+ - deadline: <datetime, OPTIONAL>
+ - color: <str, OPTIONAL>
+ - description: <str, OPTIONAL>
+ - boardname: <str, OPTIONAL>
+
+_Request example_:
+```json
+{
+    "boardname": "New board(POSTMAN|REDESIGN)",
+    "deadline": null,
+    "color": "blue(IDK)",
+    "description": "This board added after porject redesign"
+}
+```
+**Response**: JSON<br>
+Responses:
+ - access_token
+ - status
+
+_Response example_:
+```json
+{
+   "access_token": "%TOKEN%",
+   "status": "ok"
+}
+```
+
+### /board/info
+**Method:** GET<br>
+**Accepts**: JSON<br>
+Received headers:
+ - Authorization: Bearer: <str, REQUIRED>
+
+Received parameters:
+ - board_id
+
+_Request example_:
+```json
+{
+   "board_id": 13
+}
+```
+**Response**: JSON<br>
+Responses:
+ - access_token
+ - data
+ - status
+_Response example_:
+```json
+{
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTY2MDE1OTgzOCwianRpIjoiZTUyNjEwYzgtZTYxZC00YTkyLWEyNGUtNjRiMGNiZDhmZTE4IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjExMSIsIm5iZiI6MTY2MDE1OTgzOCwiZXhwIjoxNjYwMzMyNjM4fQ.QomWgunKbyZJzFPcM7eg_82M4Q7VMQMM7tebAzVTRqU",
+    "data": {
+        "board": {
+            "board_id": 13,
+            "boardname": "New board(POSTMAN|REDESIGN)",
+            "color": "blue(IDK)",
+            "description": "This board added after porject redesign"
+        }
+    },
+    "status": "ok"
+}
+```
+
+### /board/edit
+**Method:** POST<br>
+**Accepts**: JSON<br>
+Received headers:
+ - Authorization: Bearer: <str, REQUIRED>
+
+Received parameters:
+ - board_id: <int, REQUIRED>
+ - deadline: <datetime, OPTIONAL>
+ - color: <str, OPTIONAL>
+ - description: <str, OPTIONAL>
+ - boardname: <str, OPTIONAL>
+
+_Request example_:
+```json
+{
+    "board_id": 13,
+    "boardname": "Changed name",
+    "color": "white",
+    "deadline": null,
+    "description": "This is changed description"
+}
+```
+**Response**: JSON<br>
+Responses:
+
+_Response example_:
+```json
+{
+   "access_token": "%TOKEN%",
+   "status": "ok"
+}
+```
+
+### /delete/board
+**Method:** <br>
+**Accepts**: JSON<br>
+Received headers:
+ - Authorization: Bearer: <str, REQUIRED>
+
+Received parameters:
+ - board_id
+
+_Request example_:
+```json
+{
+   "board_id": 13
+}
+```
+**Response**: JSON<br>
+Responses:
+
+_Response example_:
+```json
+{
+   "access_token": "%TOKEN%",
+   "status": "ok"
 }
 ```

@@ -16,7 +16,6 @@ cors = CORS(
 )
 
 
-
 @app.after_request
 def refresh_expiring_jwts(response):
     try:
@@ -160,6 +159,7 @@ def task_comments():
     response = task_comments_warden(**req)
 
     return jsonify(response)
+
 
 @app.route('/task/files', methods=["GET"])
 @jwt_required()
@@ -319,6 +319,7 @@ def task_add_file():
 
     return jsonify(response)
 
+
 @app.route('/task/get/file', methods=["GET"])
 @jwt_required()
 def task_get_file():
@@ -353,6 +354,7 @@ def trashcan_add_task():
 
     return jsonify(response)
 
+
 @app.route('/trashcan/get/tasks', methods=["GET"])
 @jwt_required()
 def trashcan_get_tasks():
@@ -361,6 +363,7 @@ def trashcan_get_tasks():
     req[JWTConfig.jwt_identity] = identity
     response = trashcan_get_tasks_warden(**req)
     return jsonify(response)
+
 
 @app.route('/trashcan/restore/task', methods=["POST"])
 @jwt_required()
@@ -383,11 +386,11 @@ def trashcan_delete_task():
 
     return jsonify(response)
 
+
 if __name__ == '__main__':
     app.config.from_object('src.solution.config.FlaskConfig')
     runs()
     app.run(port=8010, host='127.0.0.1', debug=True)
-
 
 # Authorization: Bearer <TOKEN>
 # Content-Type: application/json

@@ -7,9 +7,6 @@ from src.solution.config import JWTConfig
 from src.solution.service_layer.handlers import *
 
 
-
-
-
 def runs():
     global fileclient
     start_mappers()
@@ -17,6 +14,8 @@ def runs():
 
 
 def login_warden(**kwargs):
+    msg = dict()
+    code = 200
     if "phone_number" in kwargs and "password" in kwargs:
         kwargs["password"] = hashing_password(password=kwargs["password"], phone=kwargs["phone_number"])
         original_user = get_object(User, phone_number=kwargs["phone_number"])
@@ -32,11 +31,12 @@ def login_warden(**kwargs):
             msg = {
                 "status": "Wrong password or phone_number"
             }
+
     else:
         msg = {
             "status": "Bad request"
         }
-    return msg
+    return msg, code
 
 
 def registration_warden(**kwargs):
