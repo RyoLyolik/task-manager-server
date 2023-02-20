@@ -43,7 +43,6 @@ class User(object):
         return getattr(self, item)
 
 
-
 class Board(object):
     classname = "Board"
 
@@ -149,14 +148,14 @@ class Task(object):
     classname = "Task"
 
     def __init__(self, task_id: int = None, taskname: str = None, board_id: int = None, description: str = None,
-                 deadline=None, stage: int = 1,author_id=None, **kwargs):
+                 deadline=None, stage: int = 1, author_id=None, **kwargs):
         self.task_id = task_id
         self.taskname = taskname
         self.board_id = board_id
         self.description = description
         self.deadline = deadline
         self.stage = stage
-        self.author_id=author_id
+        self.author_id = author_id
 
         self._ref = task_id
 
@@ -245,14 +244,14 @@ class Delete:
     classname = "Delete"
 
     def __init__(self, task_id: int = None, taskname: str = None, board_id: int = None, description: str = None,
-                 deadline=None, stage: int = 1,author_id=None, **kwargs):
+                 deadline=None, stage: int = 1, author_id=None, **kwargs):
         self.task_id = task_id
         self.taskname = taskname
         self.board_id = board_id
         self.description = description
         self.deadline = deadline
         self.stage = stage
-        self.author_id=author_id
+        self.author_id = author_id
 
         self._ref = task_id
 

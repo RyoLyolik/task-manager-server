@@ -1,4 +1,8 @@
+import sys
+sys.path.insert(1,'../../../')
+
 import io
+
 
 from flask import *
 from flask_jwt_extended import *
@@ -6,6 +10,7 @@ from flask_cors import CORS
 from src.solution.service_layer.services import *
 from src.solution.config import *
 from datetime import datetime, timezone
+from src.solution.entrypoints.docs.api import blueprint
 
 app = Flask(__name__)
 JWT = JWTManager(app)
@@ -14,7 +19,7 @@ cors = CORS(
     app,
     supports_credentials=True  # <- maybe delete this later
 )
-
+app.register_blueprint(blueprint)
 
 @app.after_request
 def refresh_expiring_jwts(response):
@@ -31,7 +36,6 @@ def refresh_expiring_jwts(response):
         return response
     except (RuntimeError, KeyError):
         return response
-
 
 @app.route('/login', methods=["POST"])
 def login():
@@ -390,7 +394,7 @@ def trashcan_delete_task():
 if __name__ == '__main__':
     app.config.from_object('src.solution.config.FlaskConfig')
     runs()
-    app.run(port=8010, host='127.0.0.1', debug=True)
+    app.run(port=8010, host='0.0.0.0', debug=True)
 
 # Authorization: Bearer <TOKEN>
 # Content-Type: application/json

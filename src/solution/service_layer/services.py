@@ -764,7 +764,7 @@ def delete_task_warden(**kwargs):
 def task_add_file_warden(**kwargs):
     msg = dict()
     if JWTConfig.jwt_identity in kwargs and "values" in kwargs and "files" in kwargs and "task_id" in kwargs[
-        "values"] and kwargs["files"]:
+        "values"] and kwargs["files"] and 'file' in kwargs['files']:
         user = get_object(obj=User, **{JWTConfig.jwt_identity: kwargs[JWTConfig.jwt_identity]})
         if user:
             task = get_object(obj=Task, task_id=kwargs["values"]["task_id"])

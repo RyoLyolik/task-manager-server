@@ -5,7 +5,7 @@
       <paths name="ivnix">
         <serverdata>
           <mappings>
-            <mapping deploy="/" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/petcollection/projects/Nikita/TaskManager" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

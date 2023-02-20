@@ -10,7 +10,7 @@ class FlaskConfig:
     secret_key = "KEY"
     MAX_CONTENT_LENGTH = 1024 * 1024 * 64
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=48)
-    DEBUG = True
+    DEBUG = Config.debug
 
 
 class JWTConfig:
@@ -24,9 +24,9 @@ class CORSConfig:
 
 
 class DataBaseConfig:
-    dbname = "Ivnix"
-    user = "postgres"
-    password = "user"
+    dbname = "TaskMan"
+    user = "centos"
+    password = "centos"
     port = '5432'
     if Config.debug:
         host = "localhost"
@@ -44,10 +44,7 @@ class MinioConfig:
     access_key = 'minioadmin'
     secret_key = 'minioadmin'
     main_bucket = "files"
-    if Config.debug:
-        secure = False
-    else:
-        secure = True
+    secure = not Config.debug
 
     @classmethod
     def get_minio_config(cls):
